@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npx --yes create-next-app@15 . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack --yes)",
+      "Bash(rm -rf cue-temp)",
+      "Bash(npx --yes create-next-app@15 cue-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack --yes)",
+      "Bash(npx --yes shadcn@latest init --base-color neutral --yes)",
+      "Bash(npx --yes shadcn@latest init --help)",
+      "Bash(npx --yes shadcn@latest init --force --yes)",
+      "Bash(npx --yes shadcn@latest init --force --yes --no-reinstall)",
+      "Bash(npx --yes shadcn@latest init --force --yes --no-reinstall --base radix --template next)",
+      "Bash(ls -la src/lib)",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(Object.keys\\({...p.dependencies,...p.devDependencies}\\).filter\\(k=>/cva|clsx|tailwind-merge|lucide|tw-animate|class-variance/.test\\(k\\)\\)\\)\")",
+      "Bash(git init *)"
+    ]
+  }
+}
