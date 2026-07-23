@@ -4,7 +4,7 @@ AI-native payments. Write to Claude, money moves.
 
 ## Status
 
-Phase 1: Project scaffold.
+Phase 2 in progress: core backend.
 
 ## Stack
 

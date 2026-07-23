@@ -34,6 +34,12 @@ yarn-error.log*
 .env*
 !.env.example
 
+# agent skills
+# Vendored skill content, restore with: npx skills install
+# skills-lock.json is tracked so the set stays reproducible.
+/.agents
+/.claude/skills
+
 # vercel
 .vercel
 

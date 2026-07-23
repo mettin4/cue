@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "skills": {
+    "accept-agent-payments": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/accept-agent-payments/SKILL.md",
+      "computedHash": "bcd7f538ebd86161c635c3bd7ba6f5565e20b03eedfd2a8a883bec537cee5c0e"
+    },
+    "agent-wallet-policy": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/agent-wallet-policy/SKILL.md",
+      "computedHash": "651a32800a341bb1a6f36b772a05ddc51d20c7b68886fdf8cdae11336b04a043"
+    },
+    "bridge-stablecoin": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/bridge-stablecoin/SKILL.md",
+      "computedHash": "89f281209be02492992ed3fe03b3c7383b8ab10058c98719c899cab9540c6b0c"
+    },
+    "deploy-to-vercel": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/deploy-to-vercel/SKILL.md",
+      "computedHash": "03e0eaaa9bf13ba1e7ffa387f5893de6f324c0868c627001f179395a8feaa7c9"
+    },
+    "fund-agent-wallet": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/fund-agent-wallet/SKILL.md",
+      "computedHash": "8c3d5c11065fd2ea922ca087eccb759e0f5b7f52a090e60e7bbe1542c4f9a5b1"
+    },
+    "pay-via-agent-wallet": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/pay-via-agent-wallet/SKILL.md",
+      "computedHash": "d4ef790eb46e4fb7c7eb9f1716328ba1277c6e2f9bde47fe1865468b2810c687"
+    },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "19fca56d93a6d212c6373ad921dcaeddf2ff13e3558e6bfd6e63acb063255f86"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "768f9a7532780a72165f79c91d71a4bf82abd9ed31045238c2acb40322fc1d0a"
+    },
+    "swap-tokens": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/swap-tokens/SKILL.md",
+      "computedHash": "eb86c36dbe3aec36c15cc875e0627919cef832da058e0111608cabca033d0a53"
+    },
+    "unify-balance": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/unify-balance/SKILL.md",
+      "computedHash": "a516ac44c82e65514385e6db3568a7f8728474f5e84738358f2a5eb3c23811bc"
+    },
+    "use-agent-wallet": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-agent-wallet/SKILL.md",
+      "computedHash": "d24d6304987c3201cd1ae7692ef92e1de0ab88eb9496522cfc1b214793815496"
+    },
+    "use-arc": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-arc/SKILL.md",
+      "computedHash": "faa502ae1026fe8e5a60403f97c2bd16dea6474021f4fc113bd5928f16bd8550"
+    },
+    "use-circle-cli": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-circle-cli/SKILL.md",
+      "computedHash": "e96edb120a865ca95ea5892a437c62fcecd644045a5fafe7a5bd47f9b496d0d3"
+    },
+    "use-circle-wallets": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-circle-wallets/SKILL.md",
+      "computedHash": "3340957f32beeca06b58551dd3b0c83ae10744707667282b0a809f391a5dcc6b"
+    },
+    "use-developer-controlled-wallets": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-developer-controlled-wallets/SKILL.md",
+      "computedHash": "91be3574d9bbcb42fae8e47d0ab9def4a889bebe41fbb3fe4425e720488addfc"
+    },
+    "use-gateway": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-gateway/SKILL.md",
+      "computedHash": "1d59df40d89d1a66a943f10b05bf52763db2458fbe3822d55535868015e771db"
+    },
+    "use-modular-wallets": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-modular-wallets/SKILL.md",
+      "computedHash": "8ca436bc5bed696fc7755c3738a46339426e5264f09d04a72dc56ce0da6dc3d6"
+    },
+    "use-smart-contract-platform": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-smart-contract-platform/SKILL.md",
+      "computedHash": "6d1a1a442d8de444a4eaec06ecdd375ebd7f531ca050fa1473e8514bd61a74da"
+    },
+    "use-usdc": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-usdc/SKILL.md",
+      "computedHash": "bec1081463c34363e2f2232bb464464c6de1294d999eb7180b2b17d6296e7576"
+    },
+    "use-user-controlled-wallets": {
+      "source": "circlefin/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/circle/skills/use-user-controlled-wallets/SKILL.md",
+      "computedHash": "b1f113ddd5b327ac93d85e17464b6d7e8ae71b9defa97961d27d09aaf4667be8"
+    },
+    "vercel-cli-with-tokens": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vercel-cli-with-tokens/SKILL.md",
+      "computedHash": "eb16b20dcbe6ce51e0372083d624e0847af1b09487ec99249227d5a8eddebfc0"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "575757e3e25761c8c562d6e395d29f0b76c98b1273c0bd72d88e6ab1bc9c7d42"
+    },
+    "vercel-optimize": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vercel-optimize/SKILL.md",
+      "computedHash": "ad0ef9c5c980f824e2ec19cba5c45426aba923a17e71fbaf6d1830574b62cc44"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
+    },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "computedHash": "41d24eafa7c3d82e270439808f7cfbc4d51aeb2d14f2809a2267c16275784d06"
+    },
+    "vercel-react-view-transitions": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-view-transitions/SKILL.md",
+      "computedHash": "c8952fc9127fa0564d0cb71dccb4215a5608ac933b5831104f09173a97a46f85"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    },
+    "writing-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/writing-guidelines/SKILL.md",
+      "computedHash": "25aa3a33a97bddbcb1847ce4a6169106ec25e5b19b15b99c66e75ab383866ef2"
+    }
+  }
+}
