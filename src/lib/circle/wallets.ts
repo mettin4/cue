@@ -235,3 +235,99 @@ export async function transferUsdc(
     throw describeCircleError(error, "transferUsdc");
   }
 }
+
+/**
+ * States a transaction can no longer move out of.
+ */
+export const TERMINAL_STATES = [
+  "COMPLETE",
+  "FAILED",
+  "DENIED",
+  "CANCELLED",
+] as const;
+
+export type CueTransaction = {
+  id: string;
+  state: string;
+  txHash?: string;
+  networkFee?: string;
+  errorReason?: string;
+  errorDetails?: string;
+};
+
+/**
+ * Reads the current state of a Circle transaction.
+ */
+export async function getTransaction(
+  transactionId: string,
+): Promise<CueTransaction> {
+  if (!transactionId) {
+    throw new Error("getTransaction requires a transactionId.");
+  }
+
+  try {
+    const response = await getCircleClient().getTransaction({
+      id: transactionId,
+    });
+
+    const tx = response.data?.transaction;
+    if (!tx?.id) {
+      throw new Error(`Circle returned no transaction for id ${transactionId}.`);
+    }
+
+    return {
+      id: tx.id,
+      state: tx.state ?? "UNKNOWN",
+      txHash: tx.txHash,
+      networkFee: tx.networkFee,
+      errorReason: tx.errorReason,
+      errorDetails: tx.errorDetails,
+    };
+  } catch (error) {
+    throw describeCircleError(error, "getTransaction");
+  }
+}
+
+/**
+ * Polls a transaction until it reaches a terminal state.
+ *
+ * Throws on timeout rather than returning a half finished transaction, so
+ * callers cannot mistake "still pending" for "settled". A STUCK transaction is
+ * reported through onState but does not stop the poll, since it can still be
+ * accelerated or cancelled.
+ */
+export async function waitForTransaction(
+  transactionId: string,
+  options: {
+    timeoutMs?: number;
+    pollIntervalMs?: number;
+    onState?: (tx: CueTransaction) => void;
+  } = {},
+): Promise<CueTransaction> {
+  const timeoutMs = options.timeoutMs ?? 120_000;
+  const pollIntervalMs = options.pollIntervalMs ?? 2_000;
+  const startedAt = Date.now();
+
+  let last: CueTransaction | null = null;
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const tx = await getTransaction(transactionId);
+
+    if (tx.state !== last?.state) {
+      options.onState?.(tx);
+    }
+    last = tx;
+
+    if ((TERMINAL_STATES as readonly string[]).includes(tx.state)) {
+      return tx;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  throw new Error(
+    `Transaction ${transactionId} did not reach a terminal state within ${
+      timeoutMs / 1000
+    }s. Last state was ${last?.state ?? "unknown"}. It may still settle later, check with getTransaction.`,
+  );
+}
