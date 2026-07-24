@@ -166,6 +166,19 @@
     filter: blur(14px);
   }
 
+  /* Used where the glow is the page's main light source, behind the hero. */
+  .glow-strong {
+    position: absolute;
+    pointer-events: none;
+    background: radial-gradient(
+      closest-side,
+      rgb(56 211 137 / 0.22),
+      rgb(56 211 137 / 0.08) 55%,
+      transparent 100%
+    );
+    filter: blur(22px);
+  }
+
   /* Barely visible texture so flat black gains a surface. */
   .bg-dots {
     background-image: radial-gradient(

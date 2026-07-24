@@ -13,14 +13,16 @@ export type ActivityItem = {
   createdAt: string | null;
   secondsUntilUnlock: number;
   canCancel: boolean;
+  /** Which way the money is moving from the viewer's point of view. */
+  direction: "in" | "out";
 };
 
 export type DashboardData = {
   user: UserRow;
   balance: string;
   hasAccount: boolean;
-  outgoing: ActivityItem[];
-  incoming: ActivityItem[];
+  /** Sent and received merged into one feed, newest first. */
+  activity: ActivityItem[];
 };
 
 /**
@@ -56,7 +58,7 @@ function secondsUntil(deadline: string | null): number {
 function toActivity(
   row: TransactionRow,
   counterparty: string,
-  viewerIsSender: boolean,
+  direction: "in" | "out",
 ): ActivityItem {
   return {
     id: row.id,
@@ -66,9 +68,13 @@ function toActivity(
     createdAt: row.created_at,
     secondsUntilUnlock: secondsUntil(row.cancel_deadline),
     // Only the sender can call money back, and only before it is collected.
-    canCancel: viewerIsSender && row.status === "pending_claim",
+    canCancel: direction === "out" && row.status === "pending_claim",
+    direction,
   };
 }
+
+const ROW_FIELDS =
+  "id, sender_id, recipient_email, amount_usdc, status, cancel_deadline, created_at, claimed_at, circle_tx_id, claim_token";
 
 export async function getDashboardData(user: UserRow): Promise<DashboardData> {
   const supabase = getSupabaseAdmin();
@@ -76,17 +82,13 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
   const [outgoingResult, incomingResult] = await Promise.all([
     supabase
       .from("transactions")
-      .select(
-        "id, sender_id, recipient_email, amount_usdc, status, cancel_deadline, created_at, claimed_at, circle_tx_id, claim_token",
-      )
+      .select(ROW_FIELDS)
       .eq("sender_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50),
     supabase
       .from("transactions")
-      .select(
-        "id, sender_id, recipient_email, amount_usdc, status, cancel_deadline, created_at, claimed_at, circle_tx_id, claim_token",
-      )
+      .select(ROW_FIELDS)
       .eq("recipient_email", normaliseEmail(user.email))
       .order("created_at", { ascending: false })
       .limit(50),
@@ -112,6 +114,18 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
     }
   }
 
+  const activity = [
+    ...outgoingRows.map((row) => toActivity(row, row.recipient_email, "out")),
+    ...incomingRows.map((row) => {
+      const email = row.sender_id ? senderEmails.get(row.sender_id) : undefined;
+      return toActivity(row, email ? maskEmail(email) : "Someone", "in");
+    }),
+  ].sort((a, b) => {
+    const left = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const right = b.createdAt ? Date.parse(b.createdAt) : 0;
+    return right - left;
+  });
+
   let balance = "0.00";
   const hasAccount = Boolean(user.circle_wallet_id);
 
@@ -125,18 +139,7 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
     }
   }
 
-  return {
-    user,
-    balance,
-    hasAccount,
-    outgoing: outgoingRows.map((row) =>
-      toActivity(row, row.recipient_email, true),
-    ),
-    incoming: incomingRows.map((row) => {
-      const email = row.sender_id ? senderEmails.get(row.sender_id) : undefined;
-      return toActivity(row, email ? maskEmail(email) : "Someone", false);
-    }),
-  };
+  return { user, balance, hasAccount, activity };
 }
 
 /**

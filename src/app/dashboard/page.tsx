@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inbox, SendHorizontal } from "lucide-react";
+import { Activity } from "lucide-react";
 
 import { StatusChip } from "@/components/ui/status-chip";
 import type { ActivityItem, DashboardData } from "@/lib/cue/dashboard";
@@ -40,19 +40,17 @@ function formatDate(value: string | null): string {
 
 function ActivityRow({
   item,
-  direction,
   viewerId,
 }: {
   item: ActivityItem;
-  direction: "out" | "in";
   viewerId: string;
 }) {
+  const incoming = item.direction === "in";
   const showUnlock =
     item.status === "pending_claim" && item.secondsUntilUnlock > 0;
-  const incoming = direction === "in";
 
   return (
-    <li className="group relative flex items-start justify-between gap-3 rounded-lg px-3 py-3.5 transition-colors duration-150 hover:bg-secondary/45">
+    <li className="flex items-start justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-secondary/40">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <p
@@ -68,15 +66,8 @@ function ActivityRow({
         <p className="mt-1 truncate text-[13px] text-muted-foreground">
           {incoming ? "From" : "To"} {item.counterparty}
           {item.createdAt ? ` · ${formatDate(item.createdAt)}` : ""}
+          {showUnlock ? ` · ${formatRemaining(item.secondsUntilUnlock)} left` : ""}
         </p>
-
-        {showUnlock ? (
-          <p className="tabular mt-1 text-xs text-subtle-foreground">
-            {incoming
-              ? `Unlocks in ${formatRemaining(item.secondsUntilUnlock)}`
-              : `Can be collected in ${formatRemaining(item.secondsUntilUnlock)}`}
-          </p>
-        ) : null}
       </div>
 
       {item.canCancel ? (
@@ -91,79 +82,23 @@ function ActivityRow({
   );
 }
 
-function Section({
-  title,
-  icon: Icon,
-  items,
-  direction,
-  viewerId,
-  emptyTitle,
-  emptyBody,
-}: {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  items: ActivityItem[];
-  direction: "out" | "in";
-  viewerId: string;
-  emptyTitle: string;
-  emptyBody: string;
-}) {
-  return (
-    <section className="mt-10">
-      <h2 className="text-[11px] font-semibold tracking-[0.13em] text-subtle-foreground uppercase">
-        {title}
-      </h2>
-
-      {items.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-dashed border-border px-6 py-9 text-center">
-          <span
-            aria-hidden="true"
-            className="mx-auto flex size-10 items-center justify-center rounded-full bg-secondary/70 text-subtle-foreground"
-          >
-            <Icon className="size-[18px]" />
-          </span>
-          <p className="mt-3.5 text-sm font-medium">{emptyTitle}</p>
-          <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted-foreground">
-            {emptyBody}
-          </p>
-        </div>
-      ) : (
-        <ul className="mt-2 divide-y divide-border/60 rounded-xl border border-border bg-card/40">
-          {items.map((item) => (
-            <ActivityRow
-              key={item.id}
-              item={item}
-              direction={direction}
-              viewerId={viewerId}
-            />
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
 function BalanceCard({ data }: { data: DashboardData }) {
   return (
     <div className="relative">
       {/* Page glow, anchored behind the balance. */}
-      <div className="glow -top-28 -left-24 h-[380px] w-[85%]" />
+      <div className="glow -top-28 -left-24 h-[360px] w-[125%]" />
 
-      <div className="surface-gradient relative overflow-hidden rounded-2xl border border-border-strong/70 bg-card p-6 shadow-[0_20px_60px_-28px_rgb(0_0_0/0.95)] sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[13px] text-muted-foreground">Your balance</p>
-            <p className="tabular tracking-tightest mt-2 flex items-baseline text-[3.25rem] leading-none font-semibold sm:text-[3.75rem]">
-              <span className="mr-0.5 text-[0.5em] font-medium text-subtle-foreground">
-                $
-              </span>
-              {data.balance}
-            </p>
-            <p className="mt-3 truncate text-xs text-subtle-foreground">
-              {data.user.email}
-            </p>
-          </div>
+      <div className="surface-gradient relative overflow-hidden rounded-2xl border border-border-strong/70 bg-card p-6 shadow-[0_20px_60px_-28px_rgb(0_0_0/0.95)]">
+        <p className="text-[13px] text-muted-foreground">Your balance</p>
 
+        <p className="tabular tracking-tightest mt-2 flex items-baseline text-[3.25rem] leading-none font-semibold">
+          <span className="mr-0.5 text-[0.5em] font-medium text-subtle-foreground">
+            $
+          </span>
+          {data.balance}
+        </p>
+
+        <div className="mt-6">
           <AddMoneyButton />
         </div>
 
@@ -194,14 +129,11 @@ export default async function DashboardPage({
         className="bg-dots bg-dots-fade pointer-events-none absolute inset-x-0 top-0 h-[400px]"
       />
 
-      {/* Extra bottom padding keeps the floating dev switcher clear of content. */}
-      <div className="relative mx-auto w-full max-w-3xl px-5 pt-12 pb-28 sm:px-8 sm:pt-16 sm:pb-24">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
-          Dashboard
-        </h1>
+      <div className="relative mx-auto w-full max-w-6xl px-5 pt-10 pb-24 sm:px-8 sm:pt-12">
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
 
         {!viewer ? (
-          <div className="mt-8 rounded-2xl border border-dashed border-border px-6 py-12 text-center">
+          <div className="mt-6 rounded-2xl border border-dashed border-border px-6 py-12 text-center">
             <p className="text-base font-medium">
               {userParam
                 ? "We could not find that account"
@@ -231,30 +163,36 @@ async function DashboardBody({
   const data = await getDashboardData(viewer);
 
   return (
-    <>
-      <div className="mt-6">
+    <div className="mt-6 grid items-start gap-6 lg:grid-cols-[360px_1fr] lg:gap-8">
+      <div className="lg:sticky lg:top-20">
         <BalanceCard data={data} />
       </div>
 
-      <Section
-        title="Sent"
-        icon={SendHorizontal}
-        items={data.outgoing}
-        direction="out"
-        viewerId={viewer.id}
-        emptyTitle="Nothing sent yet"
-        emptyBody="Ask Claude to send money to an email address and it shows up here."
-      />
+      <section>
+        <h2 className="text-[11px] font-semibold tracking-[0.13em] text-subtle-foreground uppercase">
+          Activity
+        </h2>
 
-      <Section
-        title="Received"
-        icon={Inbox}
-        items={data.incoming}
-        direction="in"
-        viewerId={viewer.id}
-        emptyTitle="Nothing received yet"
-        emptyBody="When someone sends you money, it appears here once you collect it."
-      />
-    </>
+        {data.activity.length === 0 ? (
+          <div className="mt-2.5 flex items-center gap-3 rounded-xl border border-dashed border-border px-4 py-4">
+            <span
+              aria-hidden="true"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary/70 text-subtle-foreground"
+            >
+              <Activity className="size-4" />
+            </span>
+            <p className="text-sm text-muted-foreground">
+              Nothing yet. Ask Claude to send money and it shows up here.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-2.5 divide-y divide-border/60 overflow-hidden rounded-xl border border-border bg-card/40">
+            {data.activity.map((item) => (
+              <ActivityRow key={item.id} item={item} viewerId={viewer.id} />
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }

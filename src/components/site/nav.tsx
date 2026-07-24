@@ -2,15 +2,15 @@ import Link from "next/link";
 
 export function SiteNav() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/75 backdrop-blur-md">
       <nav
         aria-label="Main"
-        className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-5 sm:px-8"
+        className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-5 sm:px-8"
       >
         <Link
           href="/"
           translate="no"
-          className="flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+          className="ring-focus flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-opacity duration-150 hover:opacity-80"
         >
           <span
             aria-hidden="true"
@@ -21,7 +21,7 @@ export function SiteNav() {
 
         <Link
           href="/dashboard"
-          className="rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+          className="ring-focus rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
         >
           Dashboard
         </Link>
