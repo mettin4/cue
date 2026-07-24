@@ -5,40 +5,46 @@
 
 /*
   Cue runs dark only, so the palette lives on :root rather than behind a theme
-  toggle. Near black background, mint green accent, white text.
+  toggle. Near black background, mint green accent, layered surfaces.
 */
 :root {
   color-scheme: dark;
 
-  --radius: 0.75rem;
+  --radius: 0.875rem;
 
   --background: #0a0a0b;
   --foreground: #f4f4f5;
 
-  --card: #121214;
+  /* Three surface levels: background < card < elevated. */
+  --card: #101012;
   --card-foreground: #f4f4f5;
+  --elevated: #17171b;
 
-  --popover: #121214;
+  --popover: #131316;
   --popover-foreground: #f4f4f5;
 
   /* Mint accent. Foreground is near black so text on mint stays readable. */
   --primary: #38d389;
-  --primary-foreground: #05130c;
+  --primary-foreground: #04120a;
 
-  --secondary: #1a1a1d;
+  --secondary: #1a1a1e;
   --secondary-foreground: #f4f4f5;
 
-  --muted: #171719;
-  --muted-foreground: #8b8b94;
+  --muted: #161619;
+  --muted-foreground: #85858f;
+  --subtle-foreground: #5f5f68;
 
-  --accent: #1c1c20;
+  --accent: #1c1c21;
   --accent-foreground: #f4f4f5;
 
   --destructive: #f0563f;
   --destructive-foreground: #ffffff;
 
-  --border: #242428;
-  --input: #242428;
+  --warning: #f0b03f;
+
+  --border: #212125;
+  --border-strong: #303037;
+  --input: #212125;
   --ring: #38d389;
 
   --chart-1: #38d389;
@@ -51,15 +57,17 @@
 @theme inline {
   --font-sans: var(--font-space-grotesk);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 5px);
+  --radius-2xl: calc(var(--radius) + 10px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
@@ -68,11 +76,14 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -100,20 +111,140 @@
     touch-action: manipulation;
   }
 
-  /* Money and counters line up in columns. */
-  .tabular {
-    font-variant-numeric: tabular-nums;
+  /* Large type reads tighter, which is what makes it feel set rather than default. */
+  h1,
+  h2 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
   }
 
-  h1,
-  h2,
   h3 {
+    letter-spacing: -0.01em;
     text-wrap: balance;
   }
 
   p {
     text-wrap: pretty;
   }
+}
+
+@layer utilities {
+  /* Money and counters line up in columns. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tracking-tightest {
+    letter-spacing: -0.03em;
+  }
+
+  /*
+    One glow source per page, sitting behind the key object.
+    A radial gradient is used rather than a blurred solid: blur on a small
+    element leaves visible banding, while the gradient falls off smoothly.
+  */
+  .glow {
+    position: absolute;
+    pointer-events: none;
+    background: radial-gradient(
+      closest-side,
+      rgb(56 211 137 / 0.16),
+      rgb(56 211 137 / 0.06) 55%,
+      transparent 100%
+    );
+    filter: blur(18px);
+  }
+
+  .glow-soft {
+    position: absolute;
+    pointer-events: none;
+    background: radial-gradient(
+      closest-side,
+      rgb(56 211 137 / 0.1),
+      transparent 100%
+    );
+    filter: blur(14px);
+  }
+
+  /* Barely visible texture so flat black gains a surface. */
+  .bg-dots {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgb(255 255 255 / 0.05) 1px,
+      transparent 0
+    );
+    background-size: 34px 34px;
+  }
+
+  .bg-dots-fade {
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+  }
+
+  .text-gradient-mint {
+    background-image: linear-gradient(
+      104deg,
+      #ffffff 0%,
+      #ffffff 32%,
+      #9fe9c4 68%,
+      #38d389 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Card face with a hint of light coming from the top left. */
+  .surface-gradient {
+    background-image: linear-gradient(
+      160deg,
+      rgb(255 255 255 / 0.045) 0%,
+      rgb(255 255 255 / 0.012) 34%,
+      transparent 70%
+    );
+  }
+
+  .ring-focus {
+    @apply focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none;
+  }
+}
+
+/* Live status dot: a steady core with a ring breathing out of it. */
+@keyframes cue-pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.65;
+  }
+  70% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@keyframes cue-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.pulse-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: cue-pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.breathe {
+  animation: cue-breathe 2.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

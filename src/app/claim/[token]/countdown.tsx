@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { LiveDot } from "@/components/ui/status-chip";
+
 function formatRemaining(totalSeconds: number): string {
   if (totalSeconds <= 0) return "a moment";
 
@@ -53,8 +55,14 @@ export function Countdown({ initialSeconds }: { initialSeconds: number }) {
   }, [seconds, router]);
 
   return (
-    <p className="tabular text-sm text-muted-foreground" aria-live="polite">
-      Available in {formatRemaining(seconds)}
+    <p
+      className="flex items-center justify-center gap-2 text-primary"
+      aria-live="polite"
+    >
+      <LiveDot />
+      <span className="tabular text-sm font-medium text-foreground">
+        Available in {formatRemaining(seconds)}
+      </span>
     </p>
   );
 }

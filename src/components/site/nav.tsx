@@ -14,7 +14,7 @@ export function SiteNav() {
         >
           <span
             aria-hidden="true"
-            className="size-2.5 rounded-full bg-primary"
+            className="size-2.5 rounded-full bg-primary shadow-[0_0_12px_rgb(56_211_137/0.8)]"
           />
           Cue
         </Link>

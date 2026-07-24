@@ -65,13 +65,12 @@ export function CancelButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 shrink-0 text-xs font-medium"
+        <button
+          type="button"
+          className="ring-focus mt-0.5 inline-flex h-8 shrink-0 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-all duration-150 hover:border-border-strong hover:bg-secondary hover:text-foreground active:scale-[0.97]"
         >
           Call Back
-        </Button>
+        </button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-sm">
