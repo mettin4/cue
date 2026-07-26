@@ -13,12 +13,15 @@
   --radius: 0.875rem;
 
   --background: #0a0a0b;
+  /* A deeper tone for banded sections, so surfaces read against it. */
+  --background-sunken: #070708;
   --foreground: #f4f4f5;
 
-  /* Three surface levels: background < card < elevated. */
-  --card: #101012;
+  /* Surface levels, each a step lighter: background < card < elevated < raised. */
+  --card: #121215;
   --card-foreground: #f4f4f5;
-  --elevated: #17171b;
+  --elevated: #1a1a1f;
+  --raised: #212127;
 
   --popover: #131316;
   --popover-foreground: #f4f4f5;
@@ -42,9 +45,10 @@
 
   --warning: #f0b03f;
 
-  --border: #212125;
-  --border-strong: #303037;
-  --input: #212125;
+  --border: #232327;
+  --border-strong: #34343c;
+  --border-hover: #42424c;
+  --input: #232327;
   --ring: #38d389;
 
   --chart-1: #38d389;
@@ -55,7 +59,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-space-grotesk);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-space-grotesk);
 
   --radius-sm: calc(var(--radius) - 6px);
   --radius-md: calc(var(--radius) - 3px);
@@ -64,10 +69,12 @@
   --radius-2xl: calc(var(--radius) + 10px);
 
   --color-background: var(--background);
+  --color-background-sunken: var(--background-sunken);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-elevated: var(--elevated);
+  --color-raised: var(--raised);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
@@ -84,6 +91,7 @@
   --color-warning: var(--warning);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-border-hover: var(--border-hover);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -106,12 +114,19 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     /* Avoids the double tap zoom delay on touch devices. */
     touch-action: manipulation;
   }
 
-  /* Large type reads tighter, which is what makes it feel set rather than default. */
+  /* Headings speak in the brand voice. Large type reads tighter, which is what
+     makes it feel set rather than default. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  }
+
   h1,
   h2 {
     letter-spacing: -0.02em;
@@ -129,8 +144,9 @@
 }
 
 @layer utilities {
-  /* Money and counters line up in columns. */
+  /* Money and counters line up in columns and speak in the display voice. */
   .tabular {
+    font-family: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
   }
 

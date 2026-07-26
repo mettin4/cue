@@ -2,7 +2,7 @@ import "server-only";
 
 import { getWalletBalance } from "../circle/wallets";
 import { getSupabaseAdmin } from "../supabase/server";
-import { maskEmail, normaliseEmail, toAmountString } from "./money";
+import { addAmounts, maskEmail, normaliseEmail, toAmountString } from "./money";
 import type { TransactionRow, TransactionStatus, UserRow } from "./types";
 
 export type ActivityItem = {
@@ -17,12 +17,19 @@ export type ActivityItem = {
   direction: "in" | "out";
 };
 
+export type DashboardStats = {
+  totalSent: string;
+  totalReceived: string;
+  pendingCount: number;
+};
+
 export type DashboardData = {
   user: UserRow;
   balance: string;
   hasAccount: boolean;
   /** Sent and received merged into one feed, newest first. */
   activity: ActivityItem[];
+  stats: DashboardStats;
 };
 
 /**
@@ -126,6 +133,18 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
     return right - left;
   });
 
+  // Stats summarise settled money. Sent and received only count collected
+  // transfers, since pending ones have not moved yet.
+  const stats: DashboardStats = {
+    totalSent: outgoingRows
+      .filter((row) => row.status === "claimed")
+      .reduce((total, row) => addAmounts(total, toAmountString(row.amount_usdc)), "0.00"),
+    totalReceived: incomingRows
+      .filter((row) => row.status === "claimed")
+      .reduce((total, row) => addAmounts(total, toAmountString(row.amount_usdc)), "0.00"),
+    pendingCount: activity.filter((item) => item.status === "pending_claim").length,
+  };
+
   let balance = "0.00";
   const hasAccount = Boolean(user.circle_wallet_id);
 
@@ -139,7 +158,7 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
     }
   }
 
-  return { user, balance, hasAccount, activity };
+  return { user, balance, hasAccount, activity, stats };
 }
 
 /**

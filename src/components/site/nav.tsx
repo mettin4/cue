@@ -10,7 +10,7 @@ export function SiteNav() {
         <Link
           href="/"
           translate="no"
-          className="ring-focus flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-opacity duration-150 hover:opacity-80"
+          className="ring-focus font-display flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-opacity duration-150 hover:opacity-80"
         >
           <span
             aria-hidden="true"

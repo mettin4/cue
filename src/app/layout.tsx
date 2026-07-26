@@ -1,12 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-import { SiteFooter } from "@/components/site/footer";
 import { SiteNav } from "@/components/site/nav";
 
+// Space Grotesk carries the brand voice: headings, numbers, the wordmark.
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+// Inter handles running text: paragraphs, labels, table rows, form fields.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
@@ -31,7 +38,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${spaceGrotesk.variable} flex min-h-dvh flex-col antialiased`}>
+      <body
+        className={`${spaceGrotesk.variable} ${inter.variable} flex min-h-dvh flex-col antialiased`}
+      >
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -44,8 +53,6 @@ export default function RootLayout({
         <main id="main" className="flex-1">
           {children}
         </main>
-
-        <SiteFooter />
       </body>
     </html>
   );

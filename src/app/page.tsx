@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, MailCheck, MessagesSquare, Undo2 } from "lucide-react";
 
+import { SiteFooter } from "@/components/site/footer";
 import { LiveDot } from "@/components/ui/status-chip";
 
 const FEATURES = [
@@ -39,7 +40,7 @@ function ChatMock() {
       <div className="mt-5 flex gap-3">
         <span
           aria-hidden="true"
-          className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[13px] font-semibold text-primary ring-1 ring-primary/25"
+          className="font-display mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[13px] font-semibold text-primary ring-1 ring-primary/25"
         >
           C
         </span>
@@ -91,9 +92,9 @@ export default function Home() {
 
       <div className="relative mx-auto w-full max-w-6xl px-5 sm:px-8">
         {/* Hero fills the first screen on desktop, two columns side by side. */}
-        {/* Sized close to the content it holds. A taller min height would centre
-            the row and leave dead space underneath before the feature cards. */}
-        <section className="grid items-center gap-12 py-14 lg:min-h-[34rem] lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:py-0">
+        {/* Sized close to the content it holds so the feature row sits just
+            below the fold rather than after a stretch of dead space. */}
+        <section className="grid items-center gap-12 pt-12 pb-10 lg:min-h-[30rem] lg:grid-cols-[1fr_1.08fr] lg:gap-16 lg:pt-8 lg:pb-0">
           <div>
             <h1 className="tracking-tightest text-[2.6rem] leading-[1.04] font-semibold sm:text-6xl lg:text-[4rem]">
               Write to Claude,
@@ -138,13 +139,13 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="grid gap-4 pt-2 pb-16 sm:grid-cols-3 lg:pt-0 lg:pb-20">
+        <section className="grid gap-4 pb-16 sm:grid-cols-3 lg:pb-20">
           <h2 className="sr-only">How Cue works</h2>
 
           {FEATURES.map(({ icon: Icon, title, body }) => (
             <div
               key={title}
-              className="group rounded-xl border border-border bg-card/50 p-5 transition-all duration-150 hover:border-border-strong hover:bg-card"
+              className="group rounded-xl border border-border bg-card/50 p-5 transition-all duration-150 hover:border-border-hover hover:bg-elevated"
             >
               <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 transition-colors duration-150 group-hover:bg-primary/15">
                 <Icon aria-hidden="true" className="size-[18px]" />
@@ -158,6 +159,8 @@ export default function Home() {
           ))}
         </section>
       </div>
+
+      <SiteFooter />
     </div>
   );
 }
