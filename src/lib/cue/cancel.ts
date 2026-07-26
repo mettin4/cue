@@ -1,5 +1,6 @@
 import "server-only";
 
+import { brandMarkUrl } from "../config";
 import { sendCancelledEmail } from "../email/templates";
 import { sendAndLog } from "../email/send";
 import { getSupabaseAdmin } from "../supabase/server";
@@ -74,6 +75,7 @@ export async function cancelSend(params: {
     const { subject, html } = sendCancelledEmail({
       amount,
       senderLabel: sender?.email ? maskEmail(sender.email) : "The sender",
+      markUrl: brandMarkUrl(),
     });
 
     email = await sendAndLog({

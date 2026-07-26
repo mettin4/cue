@@ -3,7 +3,12 @@ import "server-only";
 import { randomBytes } from "crypto";
 
 import { getWalletBalance } from "../circle/wallets";
-import { DEFAULT_CANCEL_WINDOW_SECONDS, appUrl, treasuryWalletId } from "../config";
+import {
+  DEFAULT_CANCEL_WINDOW_SECONDS,
+  appUrl,
+  brandMarkUrl,
+  treasuryWalletId,
+} from "../config";
 import { claimInviteEmail } from "../email/templates";
 import { sendAndLog } from "../email/send";
 import { getSupabaseAdmin } from "../supabase/server";
@@ -103,6 +108,7 @@ export async function createSend(params: {
     senderLabel: maskEmail(sender.email),
     claimUrl,
     unlocksAt: cancelDeadline,
+    markUrl: brandMarkUrl(),
   });
 
   const email = await sendAndLog({

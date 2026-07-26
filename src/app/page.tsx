@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, MailCheck, MessagesSquare, Undo2 } from "lucide-react";
 
+import { CueMark } from "@/components/brand/cue-mark";
 import { SiteFooter } from "@/components/site/footer";
 import { LiveDot } from "@/components/ui/status-chip";
 
@@ -40,9 +41,9 @@ function ChatMock() {
       <div className="mt-5 flex gap-3">
         <span
           aria-hidden="true"
-          className="font-display mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-[13px] font-semibold text-primary ring-1 ring-primary/25"
+          className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary ring-1 ring-primary/25"
         >
-          C
+          <CueMark className="h-3.5 w-auto" />
         </span>
 
         <div className="min-w-0 flex-1">

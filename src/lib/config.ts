@@ -48,6 +48,14 @@ export function appUrl(): string {
 }
 
 /**
+ * Absolute URL to the brand mark PNG used in email headers. Must be absolute so
+ * email clients can fetch it.
+ */
+export function brandMarkUrl(): string {
+  return `${appUrl()}/brand/mark.png`;
+}
+
+/**
  * Sender address for outbound email. Resend's shared onboarding domain works
  * without domain verification but can only deliver to the Resend account owner.
  */

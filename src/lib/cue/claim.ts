@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createWallet, transferUsdc, waitForTransaction } from "../circle/wallets";
-import { circleWalletSetId, treasuryWalletId } from "../config";
+import { brandMarkUrl, circleWalletSetId, treasuryWalletId } from "../config";
 import { claimConfirmationEmail } from "../email/templates";
 import { sendAndLog } from "../email/send";
 import { getSupabaseAdmin } from "../supabase/server";
@@ -155,7 +155,10 @@ export async function claimSend(params: {
     throw error;
   }
 
-  const { subject, html } = claimConfirmationEmail({ amount });
+  const { subject, html } = claimConfirmationEmail({
+    amount,
+    markUrl: brandMarkUrl(),
+  });
   const email = await sendAndLog({
     to: recipientEmail,
     subject,

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { CueMark } from "@/components/brand/cue-mark";
+
 export function SiteNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/50 bg-background/75 backdrop-blur-md">
@@ -12,10 +14,7 @@ export function SiteNav() {
           translate="no"
           className="ring-focus font-display flex items-center gap-2 rounded-md text-[15px] font-semibold tracking-tight transition-opacity duration-150 hover:opacity-80"
         >
-          <span
-            aria-hidden="true"
-            className="size-2.5 rounded-full bg-primary shadow-[0_0_12px_rgb(56_211_137/0.8)]"
-          />
+          <CueMark className="h-[22px] w-auto -translate-y-px text-foreground" />
           Cue
         </Link>
 

@@ -11,9 +11,17 @@ type Layout = {
   bodyHtml: string;
   action?: { label: string; url: string };
   footnote?: string;
+  /** Absolute URL to the brand mark PNG. Inline SVG is stripped by clients. */
+  markUrl?: string;
 };
 
-function layout({ heading, bodyHtml, action, footnote }: Layout): string {
+function layout({ heading, bodyHtml, action, footnote, markUrl }: Layout): string {
+  // alt is empty because the wordmark text beside it already reads "Cue".
+  const brand = markUrl
+    ? `<img src="${markUrl}" width="26" height="25" alt=""
+             style="display: inline-block; vertical-align: middle; border: 0;" />
+         <span style="vertical-align: middle; margin-left: 7px;">Cue</span>`
+    : "Cue";
   const button = action
     ? `
         <tr>
@@ -49,7 +57,7 @@ function layout({ heading, bodyHtml, action, footnote }: Layout): string {
                         color: #111111;">
             <tr>
               <td style="font-size: 17px; font-weight: 600; letter-spacing: -0.2px; padding-bottom: 4px;">
-                Cue
+                ${brand}
               </td>
             </tr>
             <tr>
@@ -83,6 +91,7 @@ export function claimInviteEmail(params: {
   senderLabel: string;
   claimUrl: string;
   unlocksAt: Date;
+  markUrl?: string;
 }): { subject: string; html: string } {
   const unlocked = params.unlocksAt.getTime() <= Date.now();
 
@@ -93,6 +102,7 @@ export function claimInviteEmail(params: {
   return {
     subject: `You received ${params.amount} dollars`,
     html: layout({
+      markUrl: params.markUrl,
       heading: `You received ${params.amount} dollars`,
       bodyHtml: `${params.senderLabel} sent you <strong>${params.amount} dollars</strong>. Use the button below to collect it.`,
       action: { label: "Collect your money", url: params.claimUrl },
@@ -103,10 +113,12 @@ export function claimInviteEmail(params: {
 
 export function claimConfirmationEmail(params: {
   amount: string;
+  markUrl?: string;
 }): { subject: string; html: string } {
   return {
     subject: `You collected ${params.amount} dollars`,
     html: layout({
+      markUrl: params.markUrl,
       heading: "All done",
       bodyHtml: `Your <strong>${params.amount} dollars</strong> have been added to your Cue account.`,
       footnote: "Nothing else is needed from you.",
@@ -117,10 +129,12 @@ export function claimConfirmationEmail(params: {
 export function sendCancelledEmail(params: {
   amount: string;
   senderLabel: string;
+  markUrl?: string;
 }): { subject: string; html: string } {
   return {
     subject: `The ${params.amount} dollars sent to you were called back`,
     html: layout({
+      markUrl: params.markUrl,
       heading: "That transfer was called back",
       bodyHtml: `${params.senderLabel} called back the <strong>${params.amount} dollars</strong> before you collected them. The earlier link no longer works.`,
       footnote: "No action is needed from you.",
