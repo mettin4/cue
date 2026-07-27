@@ -5,7 +5,6 @@ import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { CueMark } from "@/components/brand/cue-mark";
-import { LiveDot } from "@/components/ui/status-chip";
 
 const SENTENCE = "Send Jack 50 dollars, jack@gmail.com";
 const SPEED_MS = 45;
@@ -50,8 +49,9 @@ export function TypedHero() {
         <span className="sr-only">{SENTENCE}</span>
         <span aria-hidden="true">
           {shown}
+          {/* Caret blinks permanently. It is the brand motif the logo mirrors. */}
           <span
-            className={`ml-1 inline-block w-[0.06em] bg-primary ${done ? "caret-blink" : ""}`}
+            className="caret-blink ml-1 inline-block w-[0.06em] bg-primary"
             style={{ height: "0.92em", transform: "translateY(0.12em)" }}
           />
         </span>
@@ -78,25 +78,24 @@ export function TypedHero() {
           </p>
         </div>
 
-        <div className="mt-10 flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          {/* The confirmation, expressed typographically, no box. */}
-          <div>
-            <p className="tabular font-display text-[2.75rem] leading-none font-semibold tracking-tightest text-primary">
-              $50.00
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">to jack@gmail.com</p>
-            <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="text-warning">
-                <LiveDot />
-              </span>
-              waiting to be collected
-            </p>
-          </div>
+        {/* The confirmation, expressed typographically, no box, no dots. The
+            action sits directly under it on the same left margin so the lower
+            hero reads as one block, not two islands. */}
+        <div className="mt-10">
+          <p className="tabular font-display text-[2.75rem] leading-none font-semibold tracking-tightest text-primary">
+            $50.00
+          </p>
+          <p className="mt-4 text-[15px] text-muted-foreground">
+            to jack@gmail.com
+            <span aria-hidden="true" className="mx-2 text-subtle-foreground">
+              ·
+            </span>
+            waiting to be collected
+          </p>
 
-          {/* Single action, pushed right onto the same band as the amount. */}
           <Link
             href="/dashboard"
-            className="ring-focus group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 self-start rounded-lg bg-primary px-7 text-[15px] font-medium text-primary-foreground shadow-[0_10px_36px_-12px_rgb(56_211_137/0.8)] transition-all duration-150 hover:bg-[#45e096] active:scale-[0.98] sm:self-auto"
+            className="ring-focus group mt-7 inline-flex h-12 items-center justify-center gap-1.5 rounded-lg bg-primary px-7 text-[15px] font-medium text-primary-foreground shadow-[0_10px_36px_-12px_rgb(56_211_137/0.8)] transition-all duration-150 hover:bg-[#45e096] active:scale-[0.98]"
           >
             Open Dashboard
             <ArrowRight

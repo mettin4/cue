@@ -57,6 +57,49 @@ export async function resolveDashboardUser(
   return data ?? null;
 }
 
+/**
+ * Picks the account with the most activity to show by default, so a visitor who
+ * lands on the dashboard without choosing an account still sees a populated
+ * page rather than a dead end. Falls back to the earliest user.
+ */
+export async function pickDemoUser(): Promise<UserRow | null> {
+  const supabase = getSupabaseAdmin();
+
+  const { data: txs } = await supabase
+    .from("transactions")
+    .select("sender_id")
+    .limit(300);
+
+  const counts = new Map<string, number>();
+  for (const tx of txs ?? []) {
+    if (tx.sender_id) counts.set(tx.sender_id, (counts.get(tx.sender_id) ?? 0) + 1);
+  }
+
+  let bestId: string | null = null;
+  let best = 0;
+  for (const [id, count] of counts) {
+    if (count > best) {
+      best = count;
+      bestId = id;
+    }
+  }
+
+  const query = supabase
+    .from("users")
+    .select("id, email, circle_wallet_id, circle_wallet_address, created_at");
+
+  if (bestId) {
+    const { data } = await query.eq("id", bestId).maybeSingle<UserRow>();
+    if (data) return data;
+  }
+
+  const { data } = await query
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<UserRow>();
+  return data ?? null;
+}
+
 function secondsUntil(deadline: string | null): number {
   if (!deadline) return 0;
   return Math.max(0, Math.ceil((new Date(deadline).getTime() - Date.now()) / 1000));

@@ -30,10 +30,11 @@ function FlowStrip() {
       </p>
 
       <ol className="relative mt-8 grid grid-cols-1 gap-y-8 sm:grid-cols-4 sm:gap-y-0">
-        {/* The connecting line. Horizontal on desktop, vertical on mobile. */}
+        {/* The connecting line. Fades out after the last node rather than
+            trailing to the edge. Horizontal on desktop, vertical on mobile. */}
         <span
           aria-hidden="true"
-          className="absolute top-4 bottom-4 left-[15px] w-px bg-gradient-to-b from-primary/50 via-border to-primary/50 sm:top-[15px] sm:right-0 sm:bottom-auto sm:left-0 sm:h-px sm:w-full sm:bg-gradient-to-r"
+          className="absolute top-4 bottom-8 left-[15px] w-px bg-gradient-to-b from-primary/40 via-border to-transparent sm:top-[15px] sm:right-[12%] sm:bottom-auto sm:left-0 sm:h-px sm:w-[76%] sm:bg-gradient-to-r"
         />
 
         {STEPS.map(({ icon: Icon, label }, index) => (
@@ -119,13 +120,14 @@ export default function Home() {
       <div aria-hidden="true" className="grain" />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-5 sm:px-8">
-        {/* Hero conversation runs wide from the left margin. */}
-        <div className="pt-14 pb-16 sm:pt-20">
+        {/* Hero conversation runs wide from the left margin (margin 1). */}
+        <div className="pt-14 pb-8 sm:pt-20">
           <TypedHero />
         </div>
 
-        {/* Flow strip, offset further right than the hero for editorial rhythm. */}
-        <div className="pb-24 sm:pl-[8%] lg:pl-[16%]">
+        {/* Flow strip uses the one indented margin (margin 2). Extra top space
+            pushes it below the 1440x900 fold so the fold lands in clean space. */}
+        <div className="pt-16 pb-28 sm:pt-44 sm:pl-[10%] lg:pl-[16%]">
           <FlowStrip />
         </div>
       </div>
