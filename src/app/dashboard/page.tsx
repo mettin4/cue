@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Activity } from "lucide-react";
 
 import { StatusText } from "@/components/ui/status-chip";
+import { maskEmail } from "@/lib/cue/money";
 import type { ActivityItem, DashboardData } from "@/lib/cue/dashboard";
 import {
   getDashboardData,
@@ -21,12 +22,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const GOOD_TO_KNOW = [
-  "Money you send is held until it is collected.",
-  "You have an hour to call back any send.",
-  "Recipients only need an email address.",
-];
 
 function formatRemaining(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
@@ -158,7 +153,14 @@ export default async function DashboardPage({
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           {viewer ? (
-            <DevUserSwitcher users={devUsers} currentUserId={viewer.id} />
+            <DevUserSwitcher
+              users={devUsers.map((u) => ({
+                id: u.id,
+                label: u.role,
+                masked: maskEmail(u.email),
+              }))}
+              currentUserId={viewer.id}
+            />
           ) : null}
         </div>
 
@@ -226,12 +228,23 @@ async function DashboardBody({
         <ConnectCard />
       </div>
 
-      <div className="mt-12 space-y-1.5 border-t border-border/60 pt-8">
-        {GOOD_TO_KNOW.map((line) => (
-          <p key={line} className="text-[13px] text-subtle-foreground">
-            {line}
-          </p>
-        ))}
+      <div className="mt-12 space-y-2 border-t border-border/60 pt-8 text-[13px] leading-relaxed text-subtle-foreground">
+        <p>This is a testnet demo. No real money is involved.</p>
+        <p>
+          Money stays in the sender&apos;s account until it is collected, and the
+          sender can call any send back during the first hour.
+        </p>
+        <p>
+          Built by Team MTH.{" "}
+          <a
+            href="https://github.com/mettin4/cue"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ring-focus rounded underline underline-offset-4 transition-colors duration-150 hover:text-foreground"
+          >
+            Source
+          </a>
+        </p>
       </div>
     </>
   );

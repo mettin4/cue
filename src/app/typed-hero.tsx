@@ -60,28 +60,29 @@ export function TypedHero() {
       {/* Reply, then a balanced band: the amount as pure type on the left, the
           single action on the right, so both halves of the lower hero carry
           weight. All of it appears once the sentence finishes typing. */}
+      {/* Two halves under the sentence so the lower hero carries weight across
+          the full width: Claude's reply on the left, the resulting confirmation
+          and the single action on the right. One conversation, left to right. */}
       <div
-        className={`transition-all duration-700 ease-out ${
+        className={`mt-10 grid gap-y-8 transition-all duration-700 ease-out lg:grid-cols-[1fr_1fr] lg:items-center lg:gap-x-14 ${
           done ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
         }`}
       >
-        <div className="mt-8 flex gap-3.5">
+        <div className="flex gap-3.5">
           <span
             aria-hidden="true"
             className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/12 ring-1 ring-primary/25"
           >
             <CueMark className="h-4 w-auto text-primary" />
           </span>
-          <p className="max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+          <p className="max-w-md text-lg leading-relaxed text-muted-foreground sm:text-xl">
             Done. Jack has an hour to collect it. You can call it back until
             then.
           </p>
         </div>
 
-        {/* The confirmation, expressed typographically, no box, no dots. The
-            action sits directly under it on the same left margin so the lower
-            hero reads as one block, not two islands. */}
-        <div className="mt-10">
+        {/* The confirmation, expressed typographically, no box, no dots. */}
+        <div>
           <p className="tabular font-display text-[2.75rem] leading-none font-semibold tracking-tightest text-primary">
             $50.00
           </p>

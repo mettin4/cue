@@ -65,39 +65,46 @@ export async function resolveDashboardUser(
 export async function pickDemoUser(): Promise<UserRow | null> {
   const supabase = getSupabaseAdmin();
 
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, email, circle_wallet_id, circle_wallet_address, created_at")
+    .order("created_at", { ascending: true });
+
+  if (!users || users.length === 0) return null;
+
   const { data: txs } = await supabase
     .from("transactions")
-    .select("sender_id")
-    .limit(300);
+    .select("sender_id, recipient_email, status")
+    .limit(500);
 
-  const counts = new Map<string, number>();
-  for (const tx of txs ?? []) {
-    if (tx.sender_id) counts.set(tx.sender_id, (counts.get(tx.sender_id) ?? 0) + 1);
-  }
+  // Score each account by how well it demonstrates the product: a funded
+  // account with a mix of statuses beats an empty one with a single status.
+  let bestUser: UserRow | null = null;
+  let bestScore = -1;
 
-  let bestId: string | null = null;
-  let best = 0;
-  for (const [id, count] of counts) {
-    if (count > best) {
-      best = count;
-      bestId = id;
+  for (const user of users as UserRow[]) {
+    const email = normaliseEmail(user.email);
+    const statuses = new Set<string>();
+    let count = 0;
+    for (const tx of txs ?? []) {
+      if (tx.sender_id === user.id || normaliseEmail(tx.recipient_email) === email) {
+        statuses.add(tx.status);
+        count += 1;
+      }
+    }
+
+    const score =
+      (user.circle_wallet_id ? 100 : 0) + // a real balance matters most
+      statuses.size * 10 + // a mix of collected / waiting / called back
+      Math.min(count, 9); // some activity, capped so it never dominates
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestUser = user;
     }
   }
 
-  const query = supabase
-    .from("users")
-    .select("id, email, circle_wallet_id, circle_wallet_address, created_at");
-
-  if (bestId) {
-    const { data } = await query.eq("id", bestId).maybeSingle<UserRow>();
-    if (data) return data;
-  }
-
-  const { data } = await query
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle<UserRow>();
-  return data ?? null;
+  return bestUser ?? (users[0] as UserRow);
 }
 
 function secondsUntil(deadline: string | null): number {
@@ -114,7 +121,8 @@ function toActivity(
     id: row.id,
     amount: toAmountString(row.amount_usdc),
     status: row.status,
-    counterparty,
+    // Always masked. Never let a raw address reach the UI on a public page.
+    counterparty: maskEmail(counterparty),
     createdAt: row.created_at,
     secondsUntilUnlock: secondsUntil(row.cancel_deadline),
     // Only the sender can call money back, and only before it is collected.
@@ -205,14 +213,31 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
 }
 
 /**
- * Dev only helper backing the user switcher. Removed once sign in ships.
+ * Dev only helper backing the user switcher. Returns a role label instead of a
+ * handle so no identifiable address renders in the control. Removed once sign
+ * in ships.
  */
-export async function listDevUsers(): Promise<Pick<UserRow, "id" | "email">[]> {
-  const { data } = await getSupabaseAdmin()
+export async function listDevUsers(): Promise<
+  { id: string; email: string; role: "sender" | "recipient" }[]
+> {
+  const supabase = getSupabaseAdmin();
+
+  const { data: users } = await supabase
     .from("users")
     .select("id, email")
     .order("created_at", { ascending: true })
     .limit(20);
 
-  return data ?? [];
+  const { data: senders } = await supabase
+    .from("transactions")
+    .select("sender_id")
+    .limit(500);
+
+  const senderIds = new Set((senders ?? []).map((s) => s.sender_id));
+
+  return (users ?? []).map((u) => ({
+    id: u.id,
+    email: u.email,
+    role: senderIds.has(u.id) ? "sender" : "recipient",
+  }));
 }

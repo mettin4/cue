@@ -71,7 +71,7 @@ function RecipientSection() {
       aria-label="What the recipient sees"
       className="relative border-t border-border/50 bg-background-sunken"
     >
-      <div className="mx-auto grid w-full max-w-6xl items-start gap-14 px-5 py-24 sm:px-8 lg:grid-cols-[1fr_240px] lg:gap-20 lg:py-28">
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-14 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_210px] lg:gap-20 lg:py-24">
         <div>
           <p className="text-[11px] font-medium tracking-[0.32em] text-muted-foreground uppercase">
             The other side
@@ -90,19 +90,26 @@ function RecipientSection() {
           </ul>
         </div>
 
-        {/* Evidence: the email card itself, no window chrome, tilted and
-            floating, allowed to bleed past the container on the right. Raised to
-            sit level with the statement rather than below it. */}
-        <div className="relative mx-auto mt-1 w-full max-w-[240px] lg:mx-0 lg:mr-[-8%] lg:w-[240px]">
-          <div className="glow-soft -inset-8 -z-10" />
-          <Image
-            src="/screens/email.png"
-            alt="The email a recipient receives, showing the amount and a button to collect it"
-            width={1320}
-            height={1080}
-            sizes="240px"
-            className="h-auto w-full rotate-[3deg] rounded-xl shadow-[0_40px_90px_-35px_rgb(0_0_0/1)] ring-1 ring-black/5 transition-transform duration-300 hover:rotate-0"
-          />
+        {/* Evidence: the email card, tilted and floating. A vignette darkens
+            its edges into the page and a slight dim keeps it from outshining the
+            mint accent, so it sits into the page rather than on top of it. */}
+        <div className="relative mx-auto w-full max-w-[210px] lg:mx-0 lg:mr-[-6%] lg:w-[210px]">
+          <div className="glow-soft -inset-10 -z-10" />
+          <div className="relative overflow-hidden rounded-xl rotate-[3deg] shadow-[0_50px_100px_-40px_rgb(0_0_0/1)] transition-transform duration-300 hover:rotate-0">
+            <Image
+              src="/screens/email.png"
+              alt="The email a recipient receives, showing the amount and a button to collect it"
+              width={1320}
+              height={1080}
+              sizes="210px"
+              className="h-auto w-full brightness-[0.92]"
+            />
+            {/* Vignette: transparent center fading to the page tone at the edges. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-black/10 [background:radial-gradient(ellipse_at_center,transparent_45%,rgb(10_10_11/0.55))]"
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -127,7 +134,7 @@ export default function Home() {
 
         {/* Flow strip uses the one indented margin (margin 2). Extra top space
             pushes it below the 1440x900 fold so the fold lands in clean space. */}
-        <div className="pt-16 pb-28 sm:pt-44 sm:pl-[10%] lg:pl-[16%]">
+        <div className="pt-14 pb-14 sm:pt-16 sm:pb-16 sm:pl-[10%] lg:pl-[16%]">
           <FlowStrip />
         </div>
       </div>
