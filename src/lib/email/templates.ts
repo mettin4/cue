@@ -3,8 +3,32 @@
  *
  * Product rule: recipients may know nothing about crypto, so this copy never
  * mentions currencies, wallets, chains or tokens. Money is described in plain
- * dollars.
+ * dollars, and no sentence uses an em dash.
  */
+
+/**
+ * A readable deep mint for the amount when it is a positive highlight. The
+ * bright brand mint fails contrast on white, so amounts use this darker shade
+ * of the same green, which stays legible.
+ */
+function mintAmount(text: string): string {
+  return `<strong style="color: #0b7a43;">${text}</strong>`;
+}
+
+/**
+ * Turns an unlock moment into a plain phrase like "in about an hour", computed
+ * relative to now (send time). Avoids showing a raw machine timestamp.
+ */
+function humanizeUnlock(unlocksAt: Date): string {
+  const minutes = Math.round((unlocksAt.getTime() - Date.now()) / 60000);
+
+  if (minutes <= 1) return "in about a minute";
+  if (minutes < 55) return `in about ${minutes} minutes`;
+  if (minutes < 90) return "in about an hour";
+
+  const hours = Math.round(minutes / 60);
+  return `in about ${hours} hours`;
+}
 
 type Layout = {
   heading: string;
@@ -27,8 +51,8 @@ function layout({ heading, bodyHtml, action, footnote, markUrl }: Layout): strin
         <tr>
           <td style="padding: 8px 0 4px;">
             <a href="${action.url}"
-               style="display: inline-block; background: #111111; color: #ffffff;
-                      text-decoration: none; font-size: 15px; font-weight: 500;
+               style="display: inline-block; background: #38D389; color: #04120a;
+                      text-decoration: none; font-size: 15px; font-weight: 600;
                       padding: 12px 22px; border-radius: 8px;">${action.label}</a>
           </td>
         </tr>`
@@ -97,14 +121,14 @@ export function claimInviteEmail(params: {
 
   const footnote = unlocked
     ? "If you were not expecting this, you can ignore this email."
-    : `This becomes available at ${params.unlocksAt.toUTCString()}. The sender can call it back until then.`;
+    : `This becomes available ${humanizeUnlock(params.unlocksAt)}. The sender can call it back until then.`;
 
   return {
     subject: `You received ${params.amount} dollars`,
     html: layout({
       markUrl: params.markUrl,
       heading: `You received ${params.amount} dollars`,
-      bodyHtml: `${params.senderLabel} sent you <strong>${params.amount} dollars</strong>. Use the button below to collect it.`,
+      bodyHtml: `${params.senderLabel} sent you ${mintAmount(`${params.amount} dollars`)}. Use the button below to collect it.`,
       action: { label: "Collect your money", url: params.claimUrl },
       footnote,
     }),
@@ -120,7 +144,7 @@ export function claimConfirmationEmail(params: {
     html: layout({
       markUrl: params.markUrl,
       heading: "All done",
-      bodyHtml: `Your <strong>${params.amount} dollars</strong> have been added to your Cue account.`,
+      bodyHtml: `Your ${mintAmount(`${params.amount} dollars`)} have been added to your Cue account.`,
       footnote: "Nothing else is needed from you.",
     }),
   };
