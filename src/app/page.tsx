@@ -97,8 +97,8 @@ function RecipientSection() {
           <Image
             src="/screens/email.png"
             alt="The email a recipient receives, showing the amount and a button to collect it"
-            width={470}
-            height={450}
+            width={1320}
+            height={1080}
             sizes="240px"
             className="h-auto w-full rotate-[3deg] rounded-xl shadow-[0_40px_90px_-35px_rgb(0_0_0/1)] ring-1 ring-black/5 transition-transform duration-300 hover:rotate-0"
           />
