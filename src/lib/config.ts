@@ -66,3 +66,29 @@ export const EMAIL_FROM = "Cue <onboarding@resend.dev>";
  * Claims unlock once this window has passed.
  */
 export const DEFAULT_CANCEL_WINDOW_SECONDS = 60 * 60;
+
+/**
+ * Shared secret required on POST /api/send until real auth lands. The MCP
+ * server will send the same value.
+ */
+export function cueApiSecret(): string {
+  return requireEnv("CUE_API_SECRET");
+}
+
+/**
+ * Largest amount a single send may move, in dollars. Capped low while on
+ * testnet, raised later by changing the env var. Defaults to 5 if unset.
+ */
+export function maxSendUsdc(): number {
+  const raw = process.env.CUE_MAX_SEND_USDC;
+  const value = raw ? Number(raw) : 5;
+  return Number.isFinite(value) && value > 0 ? value : 5;
+}
+
+/**
+ * Whether cancel windows shorter than the default are allowed. Off unless the
+ * env flag is explicitly "true", so production always enforces the full window.
+ */
+export function allowShortCancelWindow(): boolean {
+  return process.env.CUE_ALLOW_SHORT_WINDOW === "true";
+}

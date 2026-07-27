@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { resolveActingUser } from "@/lib/api/auth";
+import { clientIp, rateLimit, requireApiSecret } from "@/lib/api/guard";
 import { handleRoute, jsonOk } from "@/lib/api/http";
 import { createSend } from "@/lib/cue/send";
 
@@ -13,6 +14,10 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   return handleRoute(async () => {
+    // Throttle first, so failed secret attempts are also rate limited.
+    rateLimit(`send:${clientIp(request)}`);
+    requireApiSecret(request);
+
     const body = bodySchema.parse(await request.json());
     const actor = await resolveActingUser(request, body.senderUserId);
 

@@ -3,6 +3,8 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
+import { ForbiddenError, RateLimitError } from "./guard";
+
 /**
  * Thrown when a caller is not allowed to perform an action. Phase 5 will raise
  * this from real session checks.
@@ -42,6 +44,15 @@ export async function handleRoute(
         path ? `${path}: ${first.message}` : (first?.message ?? "Invalid request."),
         422,
       );
+    }
+
+    if (error instanceof ForbiddenError) {
+      // Bare 401, no detail, so it reveals nothing about why.
+      return jsonError("Not authorized.", 401);
+    }
+
+    if (error instanceof RateLimitError) {
+      return jsonError(error.message, 429);
     }
 
     if (error instanceof UnauthorizedError) {

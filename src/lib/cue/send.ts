@@ -5,8 +5,10 @@ import { randomBytes } from "crypto";
 import { getWalletBalance } from "../circle/wallets";
 import {
   DEFAULT_CANCEL_WINDOW_SECONDS,
+  allowShortCancelWindow,
   appUrl,
   brandMarkUrl,
+  maxSendUsdc,
   treasuryWalletId,
 } from "../config";
 import { claimInviteEmail } from "../email/templates";
@@ -56,8 +58,21 @@ export async function createSend(params: {
     throw new Error(`"${params.recipientEmail}" is not a valid email address.`);
   }
 
+  // Cap the amount while on testnet. Enforced here so the API and the future
+  // MCP server are both bound by it.
+  const cap = maxSendUsdc();
+  if (Number(amount) > cap) {
+    throw new Error(`Amount is above the current limit of ${cap.toFixed(2)} dollars per send.`);
+  }
+
+  // Floor the cancel window to the default. A shorter window would shrink the
+  // sender's safety period, so client values below the default are ignored
+  // unless a local flag explicitly allows them for testing.
+  const requested = params.cancelWindowSeconds ?? DEFAULT_CANCEL_WINDOW_SECONDS;
   const cancelWindowSeconds =
-    params.cancelWindowSeconds ?? DEFAULT_CANCEL_WINDOW_SECONDS;
+    allowShortCancelWindow() || requested >= DEFAULT_CANCEL_WINDOW_SECONDS
+      ? requested
+      : DEFAULT_CANCEL_WINDOW_SECONDS;
 
   // Resolve the sender so the email can name them and the row can reference them.
   const { data: sender, error: senderError } = await supabase
