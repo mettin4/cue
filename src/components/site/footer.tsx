@@ -3,7 +3,7 @@ import { CueMark } from "@/components/brand/cue-mark";
 export function SiteFooter() {
   return (
     <footer className="relative z-10 border-t border-border/50">
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-2.5 px-5 py-5 sm:px-8">
+      <div className="mx-auto flex w-full max-w-[1280px] items-center gap-2.5 px-6 py-5 md:px-16">
         <CueMark className="h-4 w-auto text-foreground/70" />
         <span
           translate="no"

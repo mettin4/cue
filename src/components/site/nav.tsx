@@ -7,7 +7,7 @@ export function SiteNav() {
     <header className="sticky top-0 z-40 border-b border-border/50 bg-background/70 backdrop-blur-md">
       <nav
         aria-label="Main"
-        className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8"
+        className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-6 md:px-16"
       >
         <Link
           href="/"
