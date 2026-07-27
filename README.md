@@ -19,4 +19,13 @@ Phase 2 in progress: core backend.
 
 ## Builder
 
-Metn (X [@0xmeto_](https://x.com/0xmeto_), Discord eastmicer123).
+Metn (X [@0xmeto_](https://x.com/0xmeto_)).
+
+## Team
+
+Team MTH:
+
+- [@0xmeto_](https://x.com/0xmeto_)
+- [@isaac_inya](https://x.com/isaac_inya)
+- [@itztotoriboy](https://x.com/itztotoriboy)
+- [@artology04](https://x.com/artology04)
