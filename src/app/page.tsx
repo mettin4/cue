@@ -70,7 +70,7 @@ function RecipientSection() {
       aria-label="What the recipient sees"
       className="relative border-t border-border/50 bg-background-sunken"
     >
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-14 px-5 py-24 sm:px-8 lg:grid-cols-[1fr_360px] lg:gap-20 lg:py-28">
+      <div className="mx-auto grid w-full max-w-6xl items-start gap-14 px-5 py-24 sm:px-8 lg:grid-cols-[1fr_240px] lg:gap-20 lg:py-28">
         <div>
           <p className="text-[11px] font-medium tracking-[0.32em] text-muted-foreground uppercase">
             The other side
@@ -89,26 +89,19 @@ function RecipientSection() {
           </ul>
         </div>
 
-        {/* Evidence: the actual email, tilted and offset, bleeding right. */}
-        <div className="relative mx-auto w-full max-w-[340px] lg:mx-0 lg:mr-[-6%] lg:w-[360px]">
-          <div className="glow-soft -inset-6 -z-10" />
-          <div className="overflow-hidden rounded-2xl border border-border-strong/70 bg-card shadow-[0_40px_90px_-40px_rgb(0_0_0/1)] rotate-[2.5deg] transition-transform duration-300 hover:rotate-0">
-            <div className="flex items-center gap-1.5 border-b border-border/60 px-4 py-2.5">
-              <span aria-hidden="true" className="size-2 rounded-full bg-border-hover" />
-              <span aria-hidden="true" className="size-2 rounded-full bg-border-hover" />
-              <span aria-hidden="true" className="size-2 rounded-full bg-border-hover" />
-              <span className="ml-2 text-[11px] text-subtle-foreground">Inbox</span>
-            </div>
-            <div className="relative aspect-[4/5] w-full">
-              <Image
-                src="/screens/email.png"
-                alt="The email a recipient receives, showing the amount and a button to collect it"
-                fill
-                sizes="360px"
-                className="object-cover object-top"
-              />
-            </div>
-          </div>
+        {/* Evidence: the email card itself, no window chrome, tilted and
+            floating, allowed to bleed past the container on the right. Raised to
+            sit level with the statement rather than below it. */}
+        <div className="relative mx-auto mt-1 w-full max-w-[240px] lg:mx-0 lg:mr-[-8%] lg:w-[240px]">
+          <div className="glow-soft -inset-8 -z-10" />
+          <Image
+            src="/screens/email.png"
+            alt="The email a recipient receives, showing the amount and a button to collect it"
+            width={470}
+            height={450}
+            sizes="240px"
+            className="h-auto w-full rotate-[3deg] rounded-xl shadow-[0_40px_90px_-35px_rgb(0_0_0/1)] ring-1 ring-black/5 transition-transform duration-300 hover:rotate-0"
+          />
         </div>
       </div>
     </section>

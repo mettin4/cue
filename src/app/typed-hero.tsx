@@ -57,8 +57,9 @@ export function TypedHero() {
         </span>
       </h1>
 
-      {/* Claude's reply and the resulting card, appearing once typing finishes.
-          The whole block is one conversation, all left aligned to the sentence. */}
+      {/* Reply, then a balanced band: the amount as pure type on the left, the
+          single action on the right, so both halves of the lower hero carry
+          weight. All of it appears once the sentence finishes typing. */}
       <div
         className={`transition-all duration-700 ease-out ${
           done ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
@@ -77,47 +78,33 @@ export function TypedHero() {
           </p>
         </div>
 
-        {/* Confirmation card, left aligned to the sentence, allowed to bleed
-            past the container on the right (notably on narrow screens). */}
-        <div className="mt-6 sm:pl-[46px]">
-          <div className="surface-gradient -mr-5 w-full max-w-md overflow-hidden rounded-2xl border border-primary/25 bg-elevated p-5 shadow-[0_0_0_1px_rgb(56_211_137/0.06),0_28px_60px_-30px_rgb(56_211_137/0.5)] sm:mr-0">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-[10px] font-medium tracking-[0.14em] text-subtle-foreground uppercase">
-                Sent
+        <div className="mt-10 flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          {/* The confirmation, expressed typographically, no box. */}
+          <div>
+            <p className="tabular font-display text-[2.75rem] leading-none font-semibold tracking-tightest text-primary">
+              $50.00
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">to jack@gmail.com</p>
+            <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="text-warning">
+                <LiveDot />
               </span>
-              <span className="tabular text-3xl font-semibold tracking-tightest text-primary">
-                $50.00
-              </span>
-            </div>
-
-            <dl className="mt-4 space-y-2 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-muted-foreground">To</dt>
-                <dd className="min-w-0 truncate">jack@gmail.com</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-muted-foreground">Status</dt>
-                <dd className="flex items-center gap-2 text-warning">
-                  <LiveDot />
-                  <span className="text-foreground">Waiting to be collected</span>
-                </dd>
-              </div>
-            </dl>
+              waiting to be collected
+            </p>
           </div>
-        </div>
-      </div>
 
-      <div className="mt-9 sm:pl-[46px]">
-        <Link
-          href="/dashboard"
-          className="ring-focus group inline-flex h-12 items-center justify-center gap-1.5 rounded-lg bg-primary px-7 text-[15px] font-medium text-primary-foreground shadow-[0_10px_36px_-12px_rgb(56_211_137/0.8)] transition-all duration-150 hover:bg-[#45e096] active:scale-[0.98]"
-        >
-          Open Dashboard
-          <ArrowRight
-            aria-hidden="true"
-            className="size-4 transition-transform duration-150 group-hover:translate-x-0.5"
-          />
-        </Link>
+          {/* Single action, pushed right onto the same band as the amount. */}
+          <Link
+            href="/dashboard"
+            className="ring-focus group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 self-start rounded-lg bg-primary px-7 text-[15px] font-medium text-primary-foreground shadow-[0_10px_36px_-12px_rgb(56_211_137/0.8)] transition-all duration-150 hover:bg-[#45e096] active:scale-[0.98] sm:self-auto"
+          >
+            Open Dashboard
+            <ArrowRight
+              aria-hidden="true"
+              className="size-4 transition-transform duration-150 group-hover:translate-x-0.5"
+            />
+          </Link>
+        </div>
       </div>
     </section>
   );
