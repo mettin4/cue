@@ -46,9 +46,9 @@ Three parts:
 
 - **Backend business logic.** The send, cancel and collect flows, money handling and email, independent of the web layer, in `src/lib/cue/` and `src/lib/email/`. Exposed over API routes in `src/app/api/`.
 - **Website.** Landing, claim and dashboard pages built with the App Router.
-- **Claude tool.** An MCP server that lets Claude call the send flow directly. In progress, not yet shipped.
+- **Claude tool.** An MCP server in `packages/mcp` that lets Claude send and manage money through Cue. It talks to the deployed API over HTTPS, so it runs on the user's own machine and never imports the backend. Six actions work today, the remaining six come in the next phase.
 
-Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Developer Controlled Wallets, Resend for email, Arc testnet, deployed on Vercel.
+Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Developer Controlled Wallets, Resend for email, Arc testnet, deployed on Vercel. The MCP server uses the official Model Context Protocol TypeScript SDK.
 
 ```
 src/
@@ -60,15 +60,52 @@ src/
       send/               POST create a send
       cancel/             POST call a send back
       claim/              POST collect, GET claim info
+      account/            GET balance and totals
+      activity/           GET recent activity
+      transaction/[id]/   GET one send status
+      resend/             POST resend the collection email
   lib/
     circle/               Circle client, wallets, transfers, polling
-    cue/                  send, cancel, claim, money, dashboard, types
+    cue/                  send, cancel, claim, money, dashboard, actions, types
     email/                Resend client and templates
-    api/                  shared secret, rate limit, error handling
+    api/                  acting account, shared secret, rate limit, errors
     supabase/             server side Supabase client
 supabase/migrations/      001_initial_schema.sql
 scripts/                  connection and end to end test scripts
+packages/mcp/             the Claude tool, an MCP server
 ```
+
+## Connect to Claude
+
+The MCP server in [`packages/mcp`](packages/mcp) is what turns a sentence to Claude into a payment. It is not published to npm yet, so you build it from this repo and point Claude Desktop at the built file.
+
+```
+cd packages/mcp
+npm install
+npm run build
+```
+
+Then add this to your Claude Desktop config file (Settings, Developer, Edit Config). Replace the path with the absolute path to the built file, set `CUE_API_KEY` to the same value as `CUE_API_SECRET` on the server, and set `CUE_USER` to the email the server should act as.
+
+```json
+{
+  "mcpServers": {
+    "cue": {
+      "command": "node",
+      "args": ["/absolute/path/to/cue/packages/mcp/dist/index.js"],
+      "env": {
+        "CUE_API_URL": "https://cue-navy-psi.vercel.app",
+        "CUE_API_KEY": "your-cue-secret",
+        "CUE_USER": "you@example.com"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop, then say something like "Send Jack 50 dollars, jack@gmail.com". Claude shows a preview of the amount and recipient and waits for your approval before the money moves.
+
+`CUE_USER` is a temporary way to identify the account, since there is no sign in yet. It is replaced by real authentication in a later phase. See [`packages/mcp/README.md`](packages/mcp/README.md) for the tools, the confirmation design and how to verify without Claude Desktop.
 
 ## Status
 
@@ -79,10 +116,11 @@ Honest state of the project.
 - The full send, cancel and collect flow with an email at every step, verified end to end with twelve checks in [`scripts/test-send-claim.ts`](scripts/test-send-claim.ts).
 - Real USDC transfers settling on Arc testnet, triggered from production.
 - Three pages deployed and live: landing, claim and dashboard.
+- The MCP server with six actions: send money, call a send back, get balance, get history, check collect status and resend the collection link. Send and cancel require an explicit confirmation before money moves. Verified against production with the CLI in `packages/mcp/test`.
 
 **In progress**
 
-- The MCP server that connects Cue to Claude, planned as twelve actions.
+- The remaining six MCP actions.
 - Contact memory so a name can map to an email.
 - Sign in and account linking.
 - The escrow contract on Arc using Circle Contracts.

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { resolveActingUser } from "@/lib/api/auth";
+import { resolveActingAccount } from "@/lib/api/auth";
 import { clientIp, rateLimit, requireApiSecret } from "@/lib/api/guard";
 import { handleRoute, jsonOk } from "@/lib/api/http";
 import { createSend } from "@/lib/cue/send";
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     requireApiSecret(request);
 
     const body = bodySchema.parse(await request.json());
-    const actor = await resolveActingUser(request, body.senderUserId);
+    const actor = await resolveActingAccount(request, body.senderUserId);
 
     const result = await createSend({
       senderUserId: actor.id,

@@ -46,3 +46,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# mcp package build artifacts and deps
+packages/*/node_modules
+packages/*/dist
