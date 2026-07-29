@@ -56,10 +56,11 @@ export function ConnectCard({
 
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         Add Cue to Claude with your personal link, then ask in plain language.
-        Ten things Claude can do: send money, call a send back, request money,
-        split a bill, save and list contacts, check your balance and history,
-        see if something was collected, and resend a collection link. It shows
-        you the details and waits for your approval before anything moves.
+        Twelve things Claude can do: send money, call a send back, request money,
+        split a bill, schedule a monthly payment, manage those schedules, save and
+        list contacts, check your balance and history, see if something was
+        collected, and resend a collection link. It shows you the details and
+        waits for your approval before anything moves.
       </p>
 
       {url ? (

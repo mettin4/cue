@@ -4,7 +4,8 @@ import { Activity } from "lucide-react";
 import { StatusText } from "@/components/ui/status-chip";
 import { appUrl } from "@/lib/config";
 import { listContacts } from "@/lib/cue/contacts";
-import { maskEmail } from "@/lib/cue/money";
+import { maskEmail, toAmountString } from "@/lib/cue/money";
+import { formatRunDate, listSchedules, nextRunDate, ordinal } from "@/lib/cue/schedules";
 import { getActiveToken } from "@/lib/mcp/tokens";
 import type { ActivityItem, DashboardData } from "@/lib/cue/dashboard";
 import {
@@ -19,6 +20,7 @@ import { CancelButton } from "./cancel-button";
 import { ConnectCard } from "./connect-card";
 import { ContactsCard } from "./contacts-card";
 import { DevUserSwitcher } from "./dev-user-switcher";
+import { SchedulesCard } from "./schedules-card";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -204,6 +206,16 @@ async function DashboardBody({
     masked: maskEmail(c.email),
   }));
 
+  const schedules = await listSchedules(viewer.id);
+  const scheduleViews = schedules.map((s) => ({
+    id: s.id,
+    masked: maskEmail(s.recipient_email),
+    amount: toAmountString(s.amount_usdc),
+    dayLabel: ordinal(s.day_of_month),
+    nextRun: formatRunDate(nextRunDate(s.day_of_month, s.last_run_at)),
+    active: s.active,
+  }));
+
   return (
     <>
       <div className="mt-8">
@@ -237,6 +249,10 @@ async function DashboardBody({
           </div>
         )}
       </section>
+
+      <div className="mt-12">
+        <SchedulesCard userId={viewer.id} initialSchedules={scheduleViews} />
+      </div>
 
       <div className="mt-12">
         <ContactsCard userId={viewer.id} initialContacts={contactViews} />

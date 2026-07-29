@@ -50,6 +50,19 @@ export type ContactRow = {
   created_at: string | null;
 };
 
+export type ScheduledPaymentRow = {
+  id: string;
+  sender_id: string | null;
+  recipient_email: string;
+  amount_usdc: string | number;
+  day_of_month: number;
+  active: boolean;
+  last_run_at: string | null;
+  last_error: string | null;
+  last_failed_at: string | null;
+  created_at: string | null;
+};
+
 /**
  * Email categories recorded in email_logs.type.
  */
@@ -57,4 +70,5 @@ export type EmailType =
   | "claim_invite"
   | "claim_confirmation"
   | "send_cancelled"
-  | "money_request";
+  | "money_request"
+  | "schedule_failed";

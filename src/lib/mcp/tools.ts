@@ -13,8 +13,18 @@ import {
   saveContact as saveContactCore,
 } from "../cue/contacts";
 import { getDashboardData } from "../cue/dashboard";
-import { parseAmount, splitAmount } from "../cue/money";
+import { maskEmail, parseAmount, splitAmount, toAmountString } from "../cue/money";
 import { createRequest, listRequests } from "../cue/requests";
+import {
+  createSchedule,
+  deleteSchedule,
+  formatRunDate,
+  getSchedule,
+  listSchedules,
+  nextRunDate,
+  ordinal,
+  setScheduleActive,
+} from "../cue/schedules";
 import { createSend } from "../cue/send";
 import type { UserRow } from "../cue/types";
 import { issueConfirmation, readConfirmation } from "./confirm";
@@ -370,6 +380,173 @@ export async function listContacts(user: UserRow): Promise<ToolOut> {
     }
     const lines = contacts.map((c) => `- ${c.name}: ${c.email}`);
     return { text: `Your contacts:\n${lines.join("\n")}` };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
+}
+
+export async function schedulePayment(
+  user: UserRow,
+  args: { recipient?: string; amount?: number; dayOfMonth?: number; confirmationToken?: string },
+): Promise<ToolOut> {
+  if (args.confirmationToken) {
+    const payload = readConfirmation(args.confirmationToken);
+    if (!payload || payload.kind !== "schedule" || payload.userId !== user.id) {
+      return {
+        text: "That confirmation is not valid or has expired. Ask me to prepare the schedule again.",
+        isError: true,
+      };
+    }
+    try {
+      const result = await createSchedule({
+        senderUserId: user.id,
+        recipientEmail: payload.recipientEmail,
+        amount: payload.amount,
+        dayOfMonth: payload.dayOfMonth,
+      });
+      return {
+        text: `Scheduled ${dollars(result.amount)} to ${payload.recipientEmail} on the ${ordinal(
+          result.dayOfMonth,
+        )} of each month. The first payment goes out on ${formatRunDate(result.firstRun)}.`,
+      };
+    } catch (error) {
+      return { text: message(error), isError: true };
+    }
+  }
+
+  if (!args.recipient || args.amount == null || args.dayOfMonth == null) {
+    return {
+      text: "To schedule a payment I need who to pay, by email or saved contact name, the amount in dollars, and a day of the month between 1 and 28.",
+      isError: true,
+    };
+  }
+
+  if (!Number.isInteger(args.dayOfMonth) || args.dayOfMonth < 1 || args.dayOfMonth > 28) {
+    return {
+      text: "Pick a day of the month between 1 and 28, so the payment has that day every month.",
+      isError: true,
+    };
+  }
+
+  const resolved = await resolveOrExplain(user.id, args.recipient);
+  if ("error" in resolved) return resolved.error;
+
+  let amount: string;
+  try {
+    amount = parseAmount(args.amount);
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
+
+  const firstRun = nextRunDate(args.dayOfMonth, null);
+  const token = issueConfirmation({
+    kind: "schedule",
+    userId: user.id,
+    recipientEmail: resolved.email,
+    amount,
+    dayOfMonth: args.dayOfMonth,
+  });
+
+  return {
+    text:
+      `Preview, nothing has been scheduled yet. Show this to the user and wait for their approval:\n` +
+      `Set up ${dollars(amount)} to ${resolved.label} on the ${ordinal(args.dayOfMonth)} of every month. ` +
+      `The first payment goes out on ${formatRunDate(firstRun)}, and it repeats on the ${ordinal(
+        args.dayOfMonth,
+      )} each month until it is paused or deleted.\n` +
+      `Once the user approves, call schedule_payment again with confirmationToken "${token}".`,
+  };
+}
+
+export async function manageSchedules(
+  user: UserRow,
+  args: { action?: "list" | "pause" | "resume" | "delete"; scheduleId?: string; confirmationToken?: string },
+): Promise<ToolOut> {
+  if (args.confirmationToken) {
+    const payload = readConfirmation(args.confirmationToken);
+    if (!payload || payload.kind !== "schedule_delete" || payload.userId !== user.id) {
+      return {
+        text: "That confirmation is not valid or has expired. Ask me to prepare the deletion again.",
+        isError: true,
+      };
+    }
+    const removed = await deleteSchedule(user.id, payload.scheduleId);
+    if (!removed) {
+      return { text: "That schedule was already removed, so there was nothing to delete." };
+    }
+    return {
+      text: `Deleted the scheduled payment of ${dollars(payload.amount)} to ${payload.recipient}. It will not run again.`,
+    };
+  }
+
+  const action = args.action ?? "list";
+
+  try {
+    if (action === "list") {
+      const schedules = await listSchedules(user.id);
+      if (schedules.length === 0) {
+        return {
+          text: "You have no scheduled payments. Set one up with schedule_payment.",
+        };
+      }
+      const lines = schedules.map((s) => {
+        const next = formatRunDate(nextRunDate(s.day_of_month, s.last_run_at));
+        const state = s.active ? `next on ${next}` : "paused";
+        return `- ${dollars(toAmountString(s.amount_usdc))} to ${maskEmail(s.recipient_email)} on the ${ordinal(
+          s.day_of_month,
+        )} of each month, ${state}. Reference ${s.id}.`;
+      });
+      return { text: `Your scheduled payments:\n${lines.join("\n")}` };
+    }
+
+    if (!args.scheduleId) {
+      return {
+        text: `To ${action} a scheduled payment, tell me which one using its reference from the list.`,
+        isError: true,
+      };
+    }
+
+    if (action === "pause") {
+      const updated = await setScheduleActive(user.id, args.scheduleId, false);
+      if (!updated) return { text: "I could not find that schedule for this account.", isError: true };
+      return {
+        text: `Paused the ${dollars(toAmountString(updated.amount_usdc))} payment to ${maskEmail(
+          updated.recipient_email,
+        )}. It will not run until you resume it.`,
+      };
+    }
+
+    if (action === "resume") {
+      const updated = await setScheduleActive(user.id, args.scheduleId, true);
+      if (!updated) return { text: "I could not find that schedule for this account.", isError: true };
+      return {
+        text: `Resumed the ${dollars(toAmountString(updated.amount_usdc))} payment to ${maskEmail(
+          updated.recipient_email,
+        )} on the ${ordinal(updated.day_of_month)} of each month.`,
+      };
+    }
+
+    // delete: needs confirmation.
+    const schedule = await getSchedule(user.id, args.scheduleId);
+    if (!schedule) return { text: "I could not find that schedule for this account.", isError: true };
+
+    const amount = toAmountString(schedule.amount_usdc);
+    const recipient = maskEmail(schedule.recipient_email);
+    const token = issueConfirmation({
+      kind: "schedule_delete",
+      userId: user.id,
+      scheduleId: schedule.id,
+      amount,
+      recipient,
+    });
+    return {
+      text:
+        `Preview, nothing has been deleted yet. Show this to the user and wait for their approval:\n` +
+        `Delete the scheduled payment of ${dollars(amount)} to ${recipient} on the ${ordinal(
+          schedule.day_of_month,
+        )} of each month. This cannot be undone, but you can set it up again later.\n` +
+        `Once the user approves, call manage_schedules again with confirmationToken "${token}".`,
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }

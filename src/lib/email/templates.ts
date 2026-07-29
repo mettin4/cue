@@ -169,6 +169,28 @@ export function requestMoneyEmail(params: {
   };
 }
 
+export function scheduleFailedEmail(params: {
+  amount: string;
+  recipientLabel: string;
+  dayLabel: string;
+  reason: string;
+  markUrl?: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `A scheduled payment of ${params.amount} dollars could not go out`,
+    html: layout({
+      markUrl: params.markUrl,
+      heading: "A scheduled payment did not go out",
+      bodyHtml:
+        `Your recurring payment of <strong>${params.amount} dollars</strong> to ${params.recipientLabel}, ` +
+        `set for the ${params.dayLabel} of each month, could not go out this time. ` +
+        `Reason: ${params.reason} Add money to your account and it will try again next month. ` +
+        `Nothing was sent and nothing was charged.`,
+      footnote: "The schedule is still active, so there is nothing you need to switch back on.",
+    }),
+  };
+}
+
 export function sendCancelledEmail(params: {
   amount: string;
   senderLabel: string;

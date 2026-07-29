@@ -76,6 +76,15 @@ export function cueApiSecret(): string {
 }
 
 /**
+ * Secret Vercel Cron includes as a bearer token when it triggers the scheduled
+ * payments job, so only Vercel can run it. Set the same value as the CRON_SECRET
+ * project env var in Vercel.
+ */
+export function cronSecret(): string {
+  return requireEnv("CRON_SECRET");
+}
+
+/**
  * Largest amount a single send may move, in dollars. Capped low while on
  * testnet, raised later by changing the env var. Defaults to 5 if unset.
  */

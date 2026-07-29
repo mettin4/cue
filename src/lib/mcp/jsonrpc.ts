@@ -7,9 +7,11 @@ import {
   getBalance,
   getHistory,
   listContacts,
+  manageSchedules,
   requestMoney,
   resendClaimLink,
   saveContact,
+  schedulePayment,
   sendMoney,
   splitMoney,
   type ToolOut,
@@ -99,6 +101,45 @@ const TOOLS = [
     },
   },
   {
+    name: "schedule_payment",
+    description:
+      "Set up a recurring monthly payment to someone, by email or by a saved contact name. Two steps. First call with recipient, amount and dayOfMonth (1 to 28) to get a preview that says plainly when the first payment goes out and that it repeats monthly; nothing is scheduled yet. Show it to the user and wait for approval, then call again with the confirmationToken to create it. Each run goes through the same limits and balance check as a normal send.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        recipient: {
+          type: "string",
+          description: "Email of the person to pay, or the name of a saved contact.",
+        },
+        amount: { type: "number", description: "Amount in dollars to send each month." },
+        dayOfMonth: {
+          type: "integer",
+          description: "Day of the month to pay, 1 to 28 so it exists every month.",
+        },
+        confirmationToken: {
+          type: "string",
+          description: "Token from the preview. Only set this on the second call, after the user approves.",
+        },
+      },
+    },
+  },
+  {
+    name: "manage_schedules",
+    description:
+      "List, pause, resume or delete recurring payments. Call with action 'list' (the default) to see them all, each with a reference. Use action 'pause' or 'resume' with a scheduleId to stop or restart one; these take effect immediately. Use action 'delete' with a scheduleId to remove one: this returns a preview and a confirmationToken, and only deletes after a second call with that token.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["list", "pause", "resume", "delete"], description: "Defaults to list." },
+        scheduleId: { type: "string", description: "The schedule reference from the list, for pause, resume or delete." },
+        confirmationToken: {
+          type: "string",
+          description: "Token from a delete preview. Only set this to confirm a deletion.",
+        },
+      },
+    },
+  },
+  {
     name: "save_contact",
     description:
       "Save a person to the account's contacts so they can be named instead of typed as an email next time. Saving a name that already exists updates its email address.",
@@ -182,6 +223,10 @@ async function callTool(user: UserRow, name: string, args: Record<string, unknow
       return requestMoney(user, args);
     case "split_money":
       return splitMoney(user, args as { totalAmount?: number; recipients?: string[]; confirmationToken?: string });
+    case "schedule_payment":
+      return schedulePayment(user, args as { recipient?: string; amount?: number; dayOfMonth?: number; confirmationToken?: string });
+    case "manage_schedules":
+      return manageSchedules(user, args as { action?: "list" | "pause" | "resume" | "delete"; scheduleId?: string; confirmationToken?: string });
     case "save_contact":
       return saveContact(user, args as { name?: string; email?: string });
     case "list_contacts":

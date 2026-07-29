@@ -166,4 +166,36 @@ export class CueClient {
       body: JSON.stringify(input),
     });
   }
+
+  async listSchedules() {
+    const data = await this.request<{
+      items: {
+        id: string;
+        amount: string;
+        recipientMasked: string;
+        dayOfMonth: number;
+        active: boolean;
+        nextRun: string | null;
+      }[];
+    }>("/api/schedules");
+    return data.items;
+  }
+
+  createSchedule(input: { recipientEmail: string; amount: string; dayOfMonth: number }) {
+    return this.request<{
+      id: string;
+      amount: string;
+      dayOfMonth: number;
+      firstRun: string;
+    }>("/api/schedules", { method: "POST", body: JSON.stringify(input) });
+  }
+
+  manageSchedule(input: { scheduleId: string; action: "pause" | "resume" | "delete" }) {
+    return this.request<{
+      status: string;
+      amount?: string;
+      recipient?: string;
+      dayOfMonth?: number;
+    }>("/api/schedules/manage", { method: "POST", body: JSON.stringify(input) });
+  }
 }

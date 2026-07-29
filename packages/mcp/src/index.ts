@@ -11,9 +11,11 @@ import {
   getBalance,
   getHistory,
   listContacts,
+  manageSchedules,
   requestMoney,
   resendClaimLink,
   saveContact,
+  schedulePayment,
   sendMoney,
   splitMoney,
 } from "./tools.js";
@@ -101,6 +103,52 @@ server.registerTool(
     },
   },
   async (args) => result(await splitMoney(ctx, args)),
+);
+
+server.registerTool(
+  "schedule_payment",
+  {
+    title: "Schedule a payment",
+    description:
+      "Set up a recurring monthly payment to someone, by email or by a saved contact name. Two steps. First call with recipient, amount and dayOfMonth (1 to 28) to get a preview that says when the first payment goes out and that it repeats monthly; nothing is scheduled yet. Show it to the user and wait for approval, then call again with the confirmationToken to create it. Each run goes through the same limits and balance check as a normal send.",
+    inputSchema: {
+      recipient: z
+        .string()
+        .optional()
+        .describe("Email of the person to pay, or the name of a saved contact."),
+      amount: z.number().positive().optional().describe("Amount in dollars to send each month."),
+      dayOfMonth: z
+        .number()
+        .int()
+        .min(1)
+        .max(28)
+        .optional()
+        .describe("Day of the month to pay, 1 to 28 so it exists every month."),
+      confirmationToken: z
+        .string()
+        .optional()
+        .describe("Token from the preview. Only set this on the second call, after the user approves."),
+    },
+  },
+  async (args) => result(await schedulePayment(ctx, args)),
+);
+
+server.registerTool(
+  "manage_schedules",
+  {
+    title: "Manage schedules",
+    description:
+      "List, pause, resume or delete recurring payments. Call with action 'list' (the default) to see them all, each with a reference. Use action 'pause' or 'resume' with a scheduleId to stop or restart one; these take effect immediately. Use action 'delete' with a scheduleId to remove one: this returns a preview and a confirmationToken, and only deletes after a second call with that token.",
+    inputSchema: {
+      action: z.enum(["list", "pause", "resume", "delete"]).optional(),
+      scheduleId: z.string().optional().describe("The schedule reference from the list."),
+      confirmationToken: z
+        .string()
+        .optional()
+        .describe("Token from a delete preview. Only set this to confirm a deletion."),
+    },
+  },
+  async (args) => result(await manageSchedules(ctx, args)),
 );
 
 server.registerTool(

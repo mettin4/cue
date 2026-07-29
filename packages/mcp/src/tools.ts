@@ -14,7 +14,10 @@ import { randomBytes } from "node:crypto";
 import { CueClient, CueError } from "./client.js";
 import {
   dollars,
+  formatRunDate,
   humanizeSeconds,
+  nextRunDate,
+  ordinal,
   requestStatusPhrase,
   secondsUntil,
   splitAmount,
@@ -33,10 +36,30 @@ type PendingSplit = {
   kind: "split";
   items: { email: string; amount: string }[];
 };
+type PendingSchedule = {
+  kind: "schedule";
+  recipientEmail: string;
+  amount: string;
+  dayOfMonth: number;
+};
+type PendingScheduleDelete = {
+  kind: "schedule_delete";
+  scheduleId: string;
+  amount: string;
+  recipient: string;
+};
 
 export type Ctx = {
   client: CueClient;
-  pending: Map<string, PendingSend | PendingCancel | PendingRequest | PendingSplit>;
+  pending: Map<
+    string,
+    | PendingSend
+    | PendingCancel
+    | PendingRequest
+    | PendingSplit
+    | PendingSchedule
+    | PendingScheduleDelete
+  >;
 };
 
 export type ToolResult = { text: string; isError?: boolean };
@@ -338,6 +361,157 @@ export async function listContacts(ctx: Ctx): Promise<ToolResult> {
     }
     const lines = contacts.map((c) => `- ${c.name}: ${c.email}`);
     return { text: `Your contacts:\n${lines.join("\n")}` };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function schedulePayment(
+  ctx: Ctx,
+  args: { recipient?: string; amount?: number; dayOfMonth?: number; confirmationToken?: string },
+): Promise<ToolResult> {
+  if (args.confirmationToken) {
+    const pending = ctx.pending.get(args.confirmationToken);
+    if (!pending || pending.kind !== "schedule") {
+      return {
+        text: "That confirmation code is not valid or has expired. Ask me to prepare the schedule again.",
+        isError: true,
+      };
+    }
+    ctx.pending.delete(args.confirmationToken);
+    try {
+      const result = await ctx.client.createSchedule({
+        recipientEmail: pending.recipientEmail,
+        amount: pending.amount,
+        dayOfMonth: pending.dayOfMonth,
+      });
+      return {
+        text: `Scheduled ${dollars(pending.amount)} to ${pending.recipientEmail} on the ${ordinal(
+          pending.dayOfMonth,
+        )} of each month. The first payment goes out on ${formatRunDate(new Date(result.firstRun))}.`,
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  }
+
+  if (!args.recipient || args.amount == null || args.dayOfMonth == null) {
+    return {
+      text: "To schedule a payment I need who to pay, by email or saved contact name, the amount in dollars, and a day of the month between 1 and 28.",
+      isError: true,
+    };
+  }
+  if (!(args.amount > 0)) {
+    return { text: "The amount must be greater than zero. Enter something like 5.00.", isError: true };
+  }
+  if (!Number.isInteger(args.dayOfMonth) || args.dayOfMonth < 1 || args.dayOfMonth > 28) {
+    return {
+      text: "Pick a day of the month between 1 and 28, so the payment has that day every month.",
+      isError: true,
+    };
+  }
+
+  const resolved = await resolveOrExplain(ctx, args.recipient);
+  if ("error" in resolved) return resolved.error;
+
+  const amount = args.amount.toFixed(2);
+  const firstRun = nextRunDate(args.dayOfMonth, null);
+  const code = token();
+  ctx.pending.set(code, {
+    kind: "schedule",
+    recipientEmail: resolved.email,
+    amount,
+    dayOfMonth: args.dayOfMonth,
+  });
+
+  return {
+    text:
+      `Preview, nothing has been scheduled yet. Show this to the user and wait for their approval:\n` +
+      `Set up ${dollars(amount)} to ${resolved.label} on the ${ordinal(args.dayOfMonth)} of every month. ` +
+      `The first payment goes out on ${formatRunDate(firstRun)}, and it repeats on the ${ordinal(
+        args.dayOfMonth,
+      )} each month until it is paused or deleted.\n` +
+      `Once the user approves, call schedule_payment again with confirmationToken "${code}".`,
+  };
+}
+
+export async function manageSchedules(
+  ctx: Ctx,
+  args: { action?: "list" | "pause" | "resume" | "delete"; scheduleId?: string; confirmationToken?: string },
+): Promise<ToolResult> {
+  if (args.confirmationToken) {
+    const pending = ctx.pending.get(args.confirmationToken);
+    if (!pending || pending.kind !== "schedule_delete") {
+      return {
+        text: "That confirmation code is not valid or has expired. Ask me to prepare the deletion again.",
+        isError: true,
+      };
+    }
+    ctx.pending.delete(args.confirmationToken);
+    try {
+      await ctx.client.manageSchedule({ scheduleId: pending.scheduleId, action: "delete" });
+      return {
+        text: `Deleted the scheduled payment of ${dollars(pending.amount)} to ${pending.recipient}. It will not run again.`,
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  }
+
+  const action = args.action ?? "list";
+
+  try {
+    if (action === "list") {
+      const schedules = await ctx.client.listSchedules();
+      if (schedules.length === 0) {
+        return { text: "You have no scheduled payments. Set one up with schedule_payment." };
+      }
+      const lines = schedules.map((s) => {
+        const state = s.active && s.nextRun ? `next on ${formatRunDate(new Date(s.nextRun))}` : "paused";
+        return `- ${dollars(s.amount)} to ${s.recipientMasked} on the ${ordinal(
+          s.dayOfMonth,
+        )} of each month, ${state}. Reference ${s.id}.`;
+      });
+      return { text: `Your scheduled payments:\n${lines.join("\n")}` };
+    }
+
+    if (!args.scheduleId) {
+      return {
+        text: `To ${action} a scheduled payment, tell me which one using its reference from the list.`,
+        isError: true,
+      };
+    }
+
+    if (action === "pause" || action === "resume") {
+      const result = await ctx.client.manageSchedule({ scheduleId: args.scheduleId, action });
+      const who = result.recipient ? ` to ${result.recipient}` : "";
+      const money = result.amount ? ` of ${dollars(result.amount)}` : "";
+      return action === "pause"
+        ? { text: `Paused the payment${money}${who}. It will not run until you resume it.` }
+        : { text: `Resumed the payment${money}${who}.` };
+    }
+
+    // delete: find it first so the preview can name it, then confirm.
+    const schedules = await ctx.client.listSchedules();
+    const target = schedules.find((s) => s.id === args.scheduleId);
+    if (!target) {
+      return { text: "I could not find that schedule for this account.", isError: true };
+    }
+    const code = token();
+    ctx.pending.set(code, {
+      kind: "schedule_delete",
+      scheduleId: target.id,
+      amount: target.amount,
+      recipient: target.recipientMasked,
+    });
+    return {
+      text:
+        `Preview, nothing has been deleted yet. Show this to the user and wait for their approval:\n` +
+        `Delete the scheduled payment of ${dollars(target.amount)} to ${target.recipientMasked} on the ${ordinal(
+          target.dayOfMonth,
+        )} of each month. This cannot be undone, but you can set it up again later.\n` +
+        `Once the user approves, call manage_schedules again with confirmationToken "${code}".`,
+    };
   } catch (error) {
     return fail(error);
   }

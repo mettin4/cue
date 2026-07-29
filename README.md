@@ -46,7 +46,7 @@ Three parts:
 
 - **Backend business logic.** The send, cancel and collect flows, money handling and email, independent of the web layer, in `src/lib/cue/` and `src/lib/email/`. Exposed over API routes in `src/app/api/`.
 - **Website.** Landing, claim and dashboard pages built with the App Router.
-- **Claude tool.** A remote MCP server hosted in this app at `/api/mcp/<token>`, so a user adds it to Claude by pasting one URL, with nothing to install. It uses the Streamable HTTP transport and calls the backend directly. Ten actions work today: send, call back, request, split, save and list contacts, balance, history, collect status and resend. A local stdio version is kept in `packages/mcp` for development.
+- **Claude tool.** A remote MCP server hosted in this app at `/api/mcp/<token>`, so a user adds it to Claude by pasting one URL, with nothing to install. It uses the Streamable HTTP transport and calls the backend directly. Twelve actions work today: send, call back, request, split, schedule and manage schedules, save and list contacts, balance, history, collect status and resend. A local stdio version is kept in `packages/mcp` for development.
 
 Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Developer Controlled Wallets, Resend for email, Arc testnet, deployed on Vercel. The MCP server uses the Model Context Protocol Streamable HTTP transport.
 
@@ -64,6 +64,8 @@ src/
       request/            POST create a request, GET request info, POST cancel
       pay/                POST pay a request
       contacts/           GET list, POST save a contact
+      schedules/          GET list, POST create, POST manage a recurring payment
+      cron/               the daily scheduled payments runner, Vercel only
       account/            GET balance and totals
       activity/           GET recent activity and requests
       transaction/[id]/   GET one send status
@@ -71,12 +73,12 @@ src/
       mcp/[token]/        the remote MCP endpoint, one per connect token
   lib/
     circle/               Circle client, wallets, transfers, polling
-    cue/                  send, cancel, claim, requests, contacts, money, dashboard, types
+    cue/                  send, cancel, claim, requests, contacts, schedules, money, dashboard
     email/                Resend client and templates
     mcp/                  tokens, signed confirmations, tools, JSON-RPC
     api/                  acting account, shared secret, rate limit, errors
     supabase/             server side Supabase client
-supabase/migrations/      001_initial_schema, 002_connect_tokens, 003_requests_contacts
+supabase/migrations/      001_initial_schema ... 004_schedule_errors
 scripts/                  connection and end to end test scripts
 packages/mcp/             local stdio MCP server, for development only
 ```
@@ -108,7 +110,8 @@ Honest state of the project.
 - The full send, cancel and collect flow with an email at every step, verified end to end with twelve checks in [`scripts/test-send-claim.ts`](scripts/test-send-claim.ts).
 - Real USDC transfers settling on Arc testnet, triggered from production.
 - Four pages deployed and live: landing, claim, pay and dashboard.
-- The MCP server with ten actions: send money, call a send back, request money, split a total, save a contact, list contacts, get balance, get history (payments or requests), check collect status and resend the collection link. Send, cancel, request and split require an explicit confirmation before anything happens. Contact names resolve to emails, and never to a guessed address. Verified against the deployed endpoint.
+- The MCP server with twelve actions: send money, call a send back, request money, split a total, schedule a recurring payment, manage schedules, save a contact, list contacts, get balance, get history (payments or requests), check collect status and resend the collection link. Send, cancel, request, split, scheduling and deleting a schedule require an explicit confirmation before anything happens. Contact names resolve to emails, and never to a guessed address. Verified against the deployed endpoint.
+- Recurring payments run daily on Vercel Cron. The runner is idempotent for the day so a schedule cannot pay twice, a failed run emails the owner and stays active for next month, and the endpoint only answers Vercel.
 
 **In progress**
 
