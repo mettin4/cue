@@ -46,15 +46,15 @@ Three parts:
 
 - **Backend business logic.** The send, cancel and collect flows, money handling and email, independent of the web layer, in `src/lib/cue/` and `src/lib/email/`. Exposed over API routes in `src/app/api/`.
 - **Website.** Landing, claim and dashboard pages built with the App Router.
-- **Claude tool.** An MCP server in `packages/mcp` that lets Claude send and manage money through Cue. It talks to the deployed API over HTTPS, so it runs on the user's own machine and never imports the backend. Six actions work today, the remaining six come in the next phase.
+- **Claude tool.** A remote MCP server hosted in this app at `/api/mcp/<token>`, so a user adds it to Claude by pasting one URL, with nothing to install. It uses the Streamable HTTP transport and calls the backend directly. Six actions work today, the remaining six come in the next phase. A local stdio version is kept in `packages/mcp` for development.
 
-Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Developer Controlled Wallets, Resend for email, Arc testnet, deployed on Vercel. The MCP server uses the official Model Context Protocol TypeScript SDK.
+Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Developer Controlled Wallets, Resend for email, Arc testnet, deployed on Vercel. The MCP server uses the Model Context Protocol Streamable HTTP transport.
 
 ```
 src/
   app/
     page.tsx              Landing
-    dashboard/            Balance and activity
+    dashboard/            Balance, activity and the connect link
     claim/[token]/        Recipient collect page
     api/
       send/               POST create a send
@@ -64,48 +64,36 @@ src/
       activity/           GET recent activity
       transaction/[id]/   GET one send status
       resend/             POST resend the collection email
+      mcp/[token]/        the remote MCP endpoint, one per connect token
   lib/
     circle/               Circle client, wallets, transfers, polling
     cue/                  send, cancel, claim, money, dashboard, actions, types
     email/                Resend client and templates
+    mcp/                  tokens, signed confirmations, tools, JSON-RPC
     api/                  acting account, shared secret, rate limit, errors
     supabase/             server side Supabase client
-supabase/migrations/      001_initial_schema.sql
+supabase/migrations/      001_initial_schema.sql, 002_connect_tokens.sql
 scripts/                  connection and end to end test scripts
-packages/mcp/             the Claude tool, an MCP server
+packages/mcp/             local stdio MCP server, for development only
 ```
 
 ## Connect to Claude
 
-The MCP server in [`packages/mcp`](packages/mcp) is what turns a sentence to Claude into a payment. It is not published to npm yet, so you build it from this repo and point Claude Desktop at the built file.
+This is the product. There is no config file to edit and nothing to install.
 
-```
-cd packages/mcp
-npm install
-npm run build
-```
+1. Open the [dashboard](https://cue-navy-psi.vercel.app/dashboard) and create your connect link. It looks like `https://cue-navy-psi.vercel.app/api/mcp/<token>`.
+2. In Claude, open Settings, then Connectors, then Add custom connector.
+3. Paste the link and save.
 
-Then add this to your Claude Desktop config file (Settings, Developer, Edit Config). Replace the path with the absolute path to the built file, set `CUE_API_KEY` to the same value as `CUE_API_SECRET` on the server, and set `CUE_USER` to the email the server should act as.
+Then say something like "Send Jack 50 dollars, jack@gmail.com". Claude shows a preview of the amount and recipient and waits for your approval before the money moves.
 
-```json
-{
-  "mcpServers": {
-    "cue": {
-      "command": "node",
-      "args": ["/absolute/path/to/cue/packages/mcp/dist/index.js"],
-      "env": {
-        "CUE_API_URL": "https://cue-navy-psi.vercel.app",
-        "CUE_API_KEY": "your-cue-secret",
-        "CUE_USER": "you@example.com"
-      }
-    }
-  }
-}
-```
+The link is a credential. Anyone who has it can send from your account, so keep it private and use Revoke or Regenerate on the dashboard if it leaks.
 
-Restart Claude Desktop, then say something like "Send Jack 50 dollars, jack@gmail.com". Claude shows a preview of the amount and recipient and waits for your approval before the money moves.
+### Identity and the security boundary
 
-`CUE_USER` is a temporary way to identify the account, since there is no sign in yet. It is replaced by real authentication in a later phase. See [`packages/mcp/README.md`](packages/mcp/README.md) for the tools, the confirmation design and how to verify without Claude Desktop.
+The account is resolved from the token in the URL on every request, in [`src/lib/mcp/tokens.ts`](src/lib/mcp/tokens.ts), and never from anything the client sends, so one person's connection cannot move another person's money. Proper OAuth, an authorization server with consent and short lived tokens, is the intended end state. It is a large security sensitive build, so for now the per user connect token is the boundary. The two step send and cancel confirmation uses tokens signed with the server secret, so it works on a stateless serverless endpoint and cannot be forged.
+
+The `packages/mcp` stdio server is kept for local development only. See [`packages/mcp/README.md`](packages/mcp/README.md) for the tools, the confirmation design and how to verify without Claude Desktop. The remote URL above is the real path.
 
 ## Status
 

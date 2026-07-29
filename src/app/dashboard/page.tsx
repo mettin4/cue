@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Activity } from "lucide-react";
 
 import { StatusText } from "@/components/ui/status-chip";
+import { appUrl } from "@/lib/config";
 import { maskEmail } from "@/lib/cue/money";
+import { getActiveToken } from "@/lib/mcp/tokens";
 import type { ActivityItem, DashboardData } from "@/lib/cue/dashboard";
 import {
   getDashboardData,
@@ -190,6 +192,9 @@ async function DashboardBody({
   const data = await getDashboardData(viewer);
   const groups = groupByDay(data.activity);
 
+  const token = await getActiveToken(viewer.id);
+  const connectUrl = token ? `${appUrl()}/api/mcp/${token.token}` : null;
+
   return (
     <>
       <div className="mt-8">
@@ -225,7 +230,7 @@ async function DashboardBody({
       </section>
 
       <div className="mt-12">
-        <ConnectCard />
+        <ConnectCard userId={viewer.id} initialUrl={connectUrl} />
       </div>
 
       <div className="mt-12 space-y-2 border-t border-border/60 pt-8 text-[13px] leading-relaxed text-subtle-foreground">

@@ -1,6 +1,8 @@
 # @cue/mcp
 
-The Cue tool for Claude. A Model Context Protocol server that lets Claude send and manage money through Cue. It runs on the user's machine and talks to the deployed Cue API over HTTPS. It does not import the Cue backend.
+For local development only. The real product is the remote MCP server hosted in the app, which a user adds to Claude by pasting one connect URL with nothing to install. See the repo README, Connect to Claude. Use this stdio package when iterating on tools without deploying.
+
+A Model Context Protocol server that lets Claude send and manage money through Cue. It runs on the machine and talks to the deployed Cue API over HTTPS. It does not import the Cue backend.
 
 ## Configuration
 
