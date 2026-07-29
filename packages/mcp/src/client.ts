@@ -25,6 +25,15 @@ export type SendSummary = {
   collected: boolean;
 };
 
+export type RequestItem = {
+  id: string;
+  amount: string;
+  status: "pending" | "paid" | "cancelled" | "expired";
+  direction: "in" | "out";
+  counterparty: string;
+  createdAt: string | null;
+};
+
 export class CueClient {
   constructor(
     private readonly baseUrl: string,
@@ -85,6 +94,16 @@ export class CueClient {
     return data.items;
   }
 
+  async listRequests(options: { limit?: number; direction?: "in" | "out" } = {}) {
+    const query = new URLSearchParams({ type: "requests" });
+    if (options.limit) query.set("limit", String(options.limit));
+    if (options.direction) query.set("direction", options.direction);
+    const data = await this.request<{ items: RequestItem[] }>(
+      `/api/activity?${query.toString()}`,
+    );
+    return data.items;
+  }
+
   async findPendingToRecipient(recipient: string) {
     const query = new URLSearchParams({ recipient });
     const data = await this.request<{ items: SendSummary[] }>(
@@ -123,5 +142,28 @@ export class CueClient {
       recipient: string;
       emailSent: boolean;
     }>("/api/resend", { method: "POST", body: JSON.stringify(input) });
+  }
+
+  createRequest(input: { targetEmail: string; amount: string }) {
+    return this.request<{
+      requestId: string;
+      amount: string;
+      payUrl: string;
+      emailSent: boolean;
+    }>("/api/request", { method: "POST", body: JSON.stringify(input) });
+  }
+
+  async listContacts() {
+    const data = await this.request<{
+      items: { id: string; name: string; email: string }[];
+    }>("/api/contacts");
+    return data.items;
+  }
+
+  saveContact(input: { name: string; email: string }) {
+    return this.request<{ id: string; name: string; email: string }>("/api/contacts", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   }
 }

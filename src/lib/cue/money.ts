@@ -62,6 +62,27 @@ export function addAmounts(a: string, b: string): string {
 }
 
 /**
+ * Splits a total evenly into `parts` amount strings, distributing any leftover
+ * cents one at a time to the earliest recipients rather than losing them. The
+ * cents always add back up to the exact total. For example 10.00 into 3 gives
+ * ["3.34", "3.33", "3.33"].
+ */
+export function splitAmount(total: string | number, parts: number): string[] {
+  if (!Number.isInteger(parts) || parts <= 0) {
+    throw new Error("Splitting needs at least one recipient.");
+  }
+  const cents = Math.round(Number(total) * 100);
+  const base = Math.floor(cents / parts);
+  const remainder = cents - base * parts;
+  const amounts: string[] = [];
+  for (let i = 0; i < parts; i += 1) {
+    const withExtra = base + (i < remainder ? 1 : 0);
+    amounts.push((withExtra / 100).toFixed(MAX_DECIMAL_PLACES));
+  }
+  return amounts;
+}
+
+/**
  * Normalises an email for storage and comparison.
  */
 export function normaliseEmail(email: string): string {

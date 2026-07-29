@@ -6,8 +6,12 @@ import {
   checkClaimStatus,
   getBalance,
   getHistory,
+  listContacts,
+  requestMoney,
   resendClaimLink,
+  saveContact,
   sendMoney,
+  splitMoney,
   type ToolOut,
 } from "./tools";
 
@@ -23,11 +27,14 @@ const TOOLS = [
   {
     name: "send_money",
     description:
-      "Send money to someone by email. Two steps. First call it with recipientEmail and amount to get a preview of exactly what will happen; no money moves on this call. Show the preview to the user and wait for their explicit approval. Only after they approve, call it again with the confirmationToken from the preview to actually send. Never set confirmationToken on the first call, and never skip the approval step.",
+      "Send money to someone by email or by a saved contact name. Two steps. First call it with recipientEmail and amount to get a preview of exactly what will happen; no money moves on this call. Show the preview to the user and wait for their explicit approval. Only after they approve, call it again with the confirmationToken from the preview to actually send. Never set confirmationToken on the first call, and never skip the approval step.",
     inputSchema: {
       type: "object",
       properties: {
-        recipientEmail: { type: "string", description: "Email of the person receiving the money." },
+        recipientEmail: {
+          type: "string",
+          description: "Email of the person receiving the money, or the name of a saved contact.",
+        },
         amount: { type: "number", description: "Amount in dollars." },
         confirmationToken: {
           type: "string",
@@ -53,6 +60,63 @@ const TOOLS = [
     },
   },
   {
+    name: "request_money",
+    description:
+      "Ask someone to pay you, by email or by a saved contact name. This is the reverse of send_money. Two steps. First call with fromEmail and amount to get a preview; no request is created yet. Show it to the user and wait for approval, then call again with the confirmationToken to send the request. The other person gets an email with a link to pay, and is not charged unless they choose to pay.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fromEmail: {
+          type: "string",
+          description: "Email of the person to ask, or the name of a saved contact.",
+        },
+        amount: { type: "number", description: "Amount in dollars to request." },
+        confirmationToken: {
+          type: "string",
+          description: "Token from the preview. Only set this on the second call, after the user approves.",
+        },
+      },
+    },
+  },
+  {
+    name: "split_money",
+    description:
+      "Split a total evenly between several people and send each their share, by email or by saved contact name. Two steps. First call with totalAmount and recipients to get a preview that lists exactly who gets what, including who absorbs any extra cent; no money moves. Show it to the user and wait for approval, then call again with the confirmationToken. Each share is its own send that person collects, and any that fail are reported without undoing the ones that went through.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        totalAmount: { type: "number", description: "The total amount in dollars to divide." },
+        recipients: {
+          type: "array",
+          items: { type: "string" },
+          description: "The people to split between, each an email or a saved contact name.",
+        },
+        confirmationToken: {
+          type: "string",
+          description: "Token from the preview. Only set this on the second call, after the user approves.",
+        },
+      },
+    },
+  },
+  {
+    name: "save_contact",
+    description:
+      "Save a person to the account's contacts so they can be named instead of typed as an email next time. Saving a name that already exists updates its email address.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "What to call this person, for example Alex." },
+        email: { type: "string", description: "Their email address." },
+      },
+      required: ["name", "email"],
+    },
+  },
+  {
+    name: "list_contacts",
+    description: "List the people saved in the account's contacts, with their email addresses.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "get_balance",
     description:
       "Get the current account balance in dollars, plus totals sent and received and how many sends are waiting to be collected.",
@@ -61,12 +125,13 @@ const TOOLS = [
   {
     name: "get_history",
     description:
-      "List recent activity. Optional limit, default 10. Optional direction: 'out' for money sent, 'in' for money received.",
+      "List recent activity. Optional limit, default 10. Optional direction: 'out' for money sent or requests you made, 'in' for money received or requests made to you. Optional type: 'payments' (the default) for money sent and received, or 'requests' for money requests.",
     inputSchema: {
       type: "object",
       properties: {
         limit: { type: "integer", description: "How many rows, up to 50." },
         direction: { type: "string", enum: ["in", "out"] },
+        type: { type: "string", enum: ["payments", "requests"], description: "Defaults to payments." },
       },
     },
   },
@@ -113,6 +178,14 @@ async function callTool(user: UserRow, name: string, args: Record<string, unknow
       return sendMoney(user, args);
     case "cancel_send":
       return cancelSend(user, args);
+    case "request_money":
+      return requestMoney(user, args);
+    case "split_money":
+      return splitMoney(user, args as { totalAmount?: number; recipients?: string[]; confirmationToken?: string });
+    case "save_contact":
+      return saveContact(user, args as { name?: string; email?: string });
+    case "list_contacts":
+      return listContacts(user);
     case "get_balance":
       return getBalance(user);
     case "get_history":

@@ -25,6 +25,13 @@ export type ConfirmPayload =
       amount: string;
       recipient: string;
       exp: number;
+    }
+  | { kind: "request"; userId: string; targetEmail: string; amount: string; exp: number }
+  | {
+      kind: "split";
+      userId: string;
+      items: { email: string; amount: string }[];
+      exp: number;
     };
 
 function b64url(input: Buffer | string): string {
@@ -40,6 +47,12 @@ export function issueConfirmation(
 ): string;
 export function issueConfirmation(
   payload: Omit<Extract<ConfirmPayload, { kind: "cancel" }>, "exp">,
+): string;
+export function issueConfirmation(
+  payload: Omit<Extract<ConfirmPayload, { kind: "request" }>, "exp">,
+): string;
+export function issueConfirmation(
+  payload: Omit<Extract<ConfirmPayload, { kind: "split" }>, "exp">,
 ): string;
 export function issueConfirmation(payload: Omit<ConfirmPayload, "exp">): string {
   const full = { ...payload, exp: Date.now() + TTL_MS } as ConfirmPayload;

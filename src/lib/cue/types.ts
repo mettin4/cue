@@ -29,10 +29,32 @@ export type UserRow = {
   created_at: string | null;
 };
 
+export type RequestStatus = "pending" | "paid" | "cancelled" | "expired";
+
+export type RequestRow = {
+  id: string;
+  requester_id: string;
+  target_email: string;
+  amount: string | number;
+  status: RequestStatus;
+  pay_token: string | null;
+  created_at: string | null;
+  paid_at: string | null;
+};
+
+export type ContactRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  created_at: string | null;
+};
+
 /**
  * Email categories recorded in email_logs.type.
  */
 export type EmailType =
   | "claim_invite"
   | "claim_confirmation"
-  | "send_cancelled";
+  | "send_cancelled"
+  | "money_request";

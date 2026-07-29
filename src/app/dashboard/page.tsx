@@ -3,6 +3,7 @@ import { Activity } from "lucide-react";
 
 import { StatusText } from "@/components/ui/status-chip";
 import { appUrl } from "@/lib/config";
+import { listContacts } from "@/lib/cue/contacts";
 import { maskEmail } from "@/lib/cue/money";
 import { getActiveToken } from "@/lib/mcp/tokens";
 import type { ActivityItem, DashboardData } from "@/lib/cue/dashboard";
@@ -16,6 +17,7 @@ import {
 import { AddMoneyButton } from "./add-money-button";
 import { CancelButton } from "./cancel-button";
 import { ConnectCard } from "./connect-card";
+import { ContactsCard } from "./contacts-card";
 import { DevUserSwitcher } from "./dev-user-switcher";
 
 export const metadata: Metadata = {
@@ -195,6 +197,13 @@ async function DashboardBody({
   const token = await getActiveToken(viewer.id);
   const connectUrl = token ? `${appUrl()}/api/mcp/${token.token}` : null;
 
+  const contacts = await listContacts(viewer.id);
+  const contactViews = contacts.map((c) => ({
+    id: c.id,
+    name: c.name,
+    masked: maskEmail(c.email),
+  }));
+
   return (
     <>
       <div className="mt-8">
@@ -228,6 +237,10 @@ async function DashboardBody({
           </div>
         )}
       </section>
+
+      <div className="mt-12">
+        <ContactsCard userId={viewer.id} initialContacts={contactViews} />
+      </div>
 
       <div className="mt-12">
         <ConnectCard userId={viewer.id} initialUrl={connectUrl} />

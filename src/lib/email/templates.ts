@@ -150,6 +150,25 @@ export function claimConfirmationEmail(params: {
   };
 }
 
+export function requestMoneyEmail(params: {
+  amount: string;
+  requesterLabel: string;
+  payUrl: string;
+  markUrl?: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `${params.requesterLabel} is asking you for ${params.amount} dollars`,
+    html: layout({
+      markUrl: params.markUrl,
+      heading: `A request for ${params.amount} dollars`,
+      bodyHtml: `${params.requesterLabel} is asking you for ${mintAmount(`${params.amount} dollars`)}. Use the button below to pay them.`,
+      action: { label: `Pay ${params.amount} dollars`, url: params.payUrl },
+      footnote:
+        "If you were not expecting this, you can ignore this email. Nothing is charged unless you choose to pay.",
+    }),
+  };
+}
+
 export function sendCancelledEmail(params: {
   amount: string;
   senderLabel: string;

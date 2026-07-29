@@ -37,3 +37,31 @@ const STATUS_PHRASE: Record<ActivityItem["status"], string> = {
 export function statusPhrase(status: ActivityItem["status"]): string {
   return STATUS_PHRASE[status];
 }
+
+const REQUEST_STATUS_PHRASE: Record<string, string> = {
+  pending: "waiting to be paid",
+  paid: "paid",
+  cancelled: "cancelled",
+  expired: "expired",
+};
+
+export function requestStatusPhrase(status: string): string {
+  return REQUEST_STATUS_PHRASE[status] ?? status;
+}
+
+/**
+ * Splits a total evenly into `parts` amount strings, giving any leftover cents
+ * one at a time to the earliest recipients so nothing is lost. Kept in step with
+ * the server helper of the same name.
+ */
+export function splitAmount(total: number, parts: number): string[] {
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / parts);
+  const remainder = cents - base * parts;
+  const amounts: string[] = [];
+  for (let i = 0; i < parts; i += 1) {
+    const withExtra = base + (i < remainder ? 1 : 0);
+    amounts.push((withExtra / 100).toFixed(2));
+  }
+  return amounts;
+}

@@ -3,12 +3,14 @@ import { clientIp, rateLimit, requireApiSecret } from "@/lib/api/guard";
 import { handleRoute, jsonError, jsonOk } from "@/lib/api/http";
 import { findLatestPendingSend } from "@/lib/cue/actions";
 import { getDashboardData } from "@/lib/cue/dashboard";
+import { listRequests } from "@/lib/cue/requests";
 
 /**
  * Recent activity for the acting account.
  *
  *   ?direction=in|out   filter by direction
  *   ?limit=N            cap the number of rows
+ *   ?type=requests      list money requests instead of payments
  *   ?recipient=email    return the latest uncollected send to that recipient,
  *                       used to cancel by recipient when no id is given
  */
@@ -35,6 +37,14 @@ export async function GET(request: Request) {
     const limit = Number.isFinite(limitRaw)
       ? Math.min(Math.max(Math.trunc(limitRaw), 1), 50)
       : 20;
+
+    if (url.searchParams.get("type") === "requests") {
+      const requests = await listRequests(actor, {
+        direction: direction === "in" || direction === "out" ? direction : undefined,
+        limit,
+      });
+      return jsonOk({ items: requests });
+    }
 
     const data = await getDashboardData(actor);
     const items = data.activity

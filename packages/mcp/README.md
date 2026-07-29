@@ -16,18 +16,26 @@ Set these in the environment, which for Claude Desktop means the `env` block of 
 
 ## Tools
 
-- **send_money** recipient email and amount. Two steps, see confirmation below.
+Ten tools, matching the remote server.
+
+- **send_money** recipient and amount. The recipient can be an email or a saved contact name. Two steps, see confirmation below.
 - **cancel_send** calls a send back before it is collected. Takes a send reference, or the recipient email to find the most recent uncollected send. Two steps.
+- **request_money** asks someone to pay you, by email or saved contact name. The reverse of a send. They get a link to pay and are not charged unless they choose to. Two steps.
+- **split_money** divides a total evenly between several people and sends each their share, by email or saved contact name. The preview lists exactly who gets what, including who absorbs any leftover cent. Two steps.
+- **save_contact** saves a name and email so a person can be named instead of typed as an email next time.
+- **list_contacts** lists the saved contacts.
 - **get_balance** current balance in dollars, plus totals and how many sends are waiting.
-- **get_history** recent activity, with an optional limit and an optional direction.
+- **get_history** recent activity, with an optional limit, an optional direction, and an optional type of `payments` (default) or `requests`.
 - **check_claim_status** whether a specific send has been collected, and how long is left on the call back window.
 - **resend_claim_link** sends the collection email again for a pending send.
+
+When a recipient is a name rather than an email, it is looked up in the account's contacts. An exact match is used and named in the preview; no match or more than one comes back as a clear question rather than a guessed address.
 
 Output is written for a person. Amounts are dollars, times are plain phrases like "about an hour", and email addresses are masked. The words crypto, wallet, blockchain and token never appear.
 
 ## Confirmation before money moves
 
-MCP has an `elicitation` feature where a server can ask the client for input mid call, but it is optional, newly introduced with a design the spec says may still change, and it requires the client to declare the capability. Rather than depend on Claude Desktop supporting it, `send_money` and `cancel_send` use a two call pattern that works everywhere:
+MCP has an `elicitation` feature where a server can ask the client for input mid call, but it is optional, newly introduced with a design the spec says may still change, and it requires the client to declare the capability. Rather than depend on Claude Desktop supporting it, `send_money`, `cancel_send`, `request_money` and `split_money` use a two call pattern that works everywhere:
 
 1. The first call returns a preview of exactly what will happen, amount and recipient, and a confirmation token. No money moves.
 2. Claude shows the preview to the user and waits for approval.

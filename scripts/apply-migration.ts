@@ -18,7 +18,10 @@ config({ path: ".env.local" });
 
 const MIGRATIONS_DIR = join(process.cwd(), "supabase", "migrations");
 const EXPECTED_TABLES = [
+  "connect_tokens",
+  "contacts",
   "email_logs",
+  "requests",
   "scheduled_payments",
   "transactions",
   "users",
@@ -85,7 +88,7 @@ async function main() {
       console.error(`Missing expected tables: ${missing.join(", ")}`);
       process.exit(1);
     }
-    console.log("Migration OK, all 4 expected tables exist.");
+    console.log(`Migration OK, all ${EXPECTED_TABLES.length} expected tables exist.`);
   } catch (error) {
     console.error("Migration FAILED");
     console.error(error instanceof Error ? error.message : error);

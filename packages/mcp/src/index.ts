@@ -10,8 +10,12 @@ import {
   checkClaimStatus,
   getBalance,
   getHistory,
+  listContacts,
+  requestMoney,
   resendClaimLink,
+  saveContact,
   sendMoney,
+  splitMoney,
 } from "./tools.js";
 
 // Logs must go to stderr. stdout is the protocol channel.
@@ -41,13 +45,12 @@ server.registerTool(
   {
     title: "Send money",
     description:
-      "Send money to someone by email. Two steps. First call it with recipientEmail and amount to get a preview of exactly what will happen; no money moves on this call. Show the preview to the user and wait for their explicit approval. Only after they approve, call it again with the confirmationToken from the preview to actually send. Never set confirmationToken on the first call, and never skip the approval step.",
+      "Send money to someone by email or by a saved contact name. Two steps. First call it with recipientEmail and amount to get a preview of exactly what will happen; no money moves on this call. Show the preview to the user and wait for their explicit approval. Only after they approve, call it again with the confirmationToken from the preview to actually send. Never set confirmationToken on the first call, and never skip the approval step.",
     inputSchema: {
       recipientEmail: z
         .string()
-        .email()
         .optional()
-        .describe("Email address of the person receiving the money."),
+        .describe("Email of the person receiving the money, or the name of a saved contact."),
       amount: z.number().positive().optional().describe("Amount in dollars."),
       confirmationToken: z
         .string()
@@ -56,6 +59,72 @@ server.registerTool(
     },
   },
   async (args) => result(await sendMoney(ctx, args)),
+);
+
+server.registerTool(
+  "request_money",
+  {
+    title: "Request money",
+    description:
+      "Ask someone to pay you, by email or by a saved contact name. The reverse of send_money. Two steps. First call with fromEmail and amount to get a preview; no request is created yet. Show it to the user and wait for approval, then call again with the confirmationToken to send the request. The other person gets an email with a link to pay, and is not charged unless they choose to pay.",
+    inputSchema: {
+      fromEmail: z
+        .string()
+        .optional()
+        .describe("Email of the person to ask, or the name of a saved contact."),
+      amount: z.number().positive().optional().describe("Amount in dollars to request."),
+      confirmationToken: z
+        .string()
+        .optional()
+        .describe("Token from the preview. Only set this on the second call, after the user approves."),
+    },
+  },
+  async (args) => result(await requestMoney(ctx, args)),
+);
+
+server.registerTool(
+  "split_money",
+  {
+    title: "Split money",
+    description:
+      "Split a total evenly between several people and send each their share, by email or by saved contact name. Two steps. First call with totalAmount and recipients to get a preview that lists exactly who gets what, including who absorbs any extra cent; no money moves. Show it to the user and wait for approval, then call again with the confirmationToken. Each share is its own send, and any that fail are reported without undoing the ones that went through.",
+    inputSchema: {
+      totalAmount: z.number().positive().optional().describe("The total amount in dollars to divide."),
+      recipients: z
+        .array(z.string())
+        .optional()
+        .describe("The people to split between, each an email or a saved contact name."),
+      confirmationToken: z
+        .string()
+        .optional()
+        .describe("Token from the preview. Only set this on the second call, after the user approves."),
+    },
+  },
+  async (args) => result(await splitMoney(ctx, args)),
+);
+
+server.registerTool(
+  "save_contact",
+  {
+    title: "Save a contact",
+    description:
+      "Save a person to the account's contacts so they can be named instead of typed as an email next time. Saving a name that already exists updates its email address.",
+    inputSchema: {
+      name: z.string().describe("What to call this person, for example Alex."),
+      email: z.string().email().describe("Their email address."),
+    },
+  },
+  async (args) => result(await saveContact(ctx, args)),
+);
+
+server.registerTool(
+  "list_contacts",
+  {
+    title: "List contacts",
+    description: "List the people saved in the account's contacts, with their email addresses.",
+    inputSchema: {},
+  },
+  async () => result(await listContacts(ctx)),
 );
 
 server.registerTool(
@@ -96,10 +165,11 @@ server.registerTool(
   {
     title: "Get recent activity",
     description:
-      "List recent activity. Optional limit, default 10. Optional direction: 'out' for money sent, 'in' for money received.",
+      "List recent activity. Optional limit, default 10. Optional direction: 'out' for money sent or requests you made, 'in' for money received or requests made to you. Optional type: 'payments' (the default) for money sent and received, or 'requests' for money requests.",
     inputSchema: {
       limit: z.number().int().positive().max(50).optional(),
       direction: z.enum(["in", "out"]).optional(),
+      type: z.enum(["payments", "requests"]).optional(),
     },
   },
   async (args) => result(await getHistory(ctx, args)),

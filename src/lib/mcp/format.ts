@@ -24,3 +24,14 @@ const STATUS: Record<TransactionStatus, string> = {
 export function statusPhrase(status: TransactionStatus): string {
   return STATUS[status];
 }
+
+const REQUEST_STATUS: Record<string, string> = {
+  pending: "waiting to be paid",
+  paid: "paid",
+  cancelled: "cancelled",
+  expired: "expired",
+};
+
+export function requestStatusPhrase(status: string): string {
+  return REQUEST_STATUS[status] ?? status;
+}
