@@ -31,9 +31,9 @@ export function AddMoneyButton() {
         <DialogHeader>
           <DialogTitle>Adding money is coming soon</DialogTitle>
           <DialogDescription className="leading-relaxed">
-            Topping up your own balance needs sign in, which lands in a later
-            release. While Cue is in testing the team funds accounts for you, so
-            just ask if you need more to try things out.
+            Topping up your own balance lands in a later release. While Cue is in
+            testing the team funds accounts for you, so just ask if you need more
+            to try things out.
           </DialogDescription>
         </DialogHeader>
 

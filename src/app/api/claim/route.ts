@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { clientIp, rateLimit } from "@/lib/api/guard";
 import { handleRoute, jsonOk } from "@/lib/api/http";
+import { setScopedSession } from "@/lib/auth/scoped";
 import { claimSend } from "@/lib/cue/claim";
 
 const bodySchema = z.object({
@@ -24,6 +25,11 @@ export async function POST(request: Request) {
       claimToken: body.claimToken,
       recipientEmail: body.recipientEmail,
     });
+
+    // Collecting proves access to the inbox the claim link was sent to, so mint a
+    // scoped session on the spot. It can view the dashboard but not move money or
+    // manage the account; that needs a full sign in.
+    await setScopedSession(result.recipientUserId);
 
     return jsonOk({
       transactionId: result.transactionId,

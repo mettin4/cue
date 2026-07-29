@@ -191,6 +191,31 @@ export function scheduleFailedEmail(params: {
   };
 }
 
+/**
+ * Branded sign in email, in the same design language as the rest of Cue.
+ *
+ * Not wired to send yet: Supabase Auth delivers sign in emails from its own
+ * sender for now. This is ready to drop in the moment our sending domain is
+ * verified, at which point sendMagicLink will render this and send through
+ * Resend. The link is passed in so the sender is the only thing that changes.
+ */
+export function magicLinkEmail(params: {
+  signInUrl: string;
+  markUrl?: string;
+}): { subject: string; html: string } {
+  return {
+    subject: "Your sign in link for Cue",
+    html: layout({
+      markUrl: params.markUrl,
+      heading: "Sign in to Cue",
+      bodyHtml:
+        "Use the button below to sign in. It works once and expires shortly, so open it on the device you want to use.",
+      action: { label: "Sign in", url: params.signInUrl },
+      footnote: "If you did not ask to sign in, you can ignore this email.",
+    }),
+  };
+}
+
 export function debtReminderEmail(params: {
   amount: string;
   fromLabel: string;

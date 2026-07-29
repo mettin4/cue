@@ -45,7 +45,7 @@ The words crypto, wallet and USDC never appear anywhere the user can see. To a s
 Three parts:
 
 - **Backend business logic.** The send, cancel and collect flows, money handling and email, independent of the web layer, in `src/lib/cue/` and `src/lib/email/`. Exposed over API routes in `src/app/api/`.
-- **Website.** Landing, claim and dashboard pages built with the App Router.
+- **Website.** Landing, claim, pay and dashboard pages built with the App Router, behind email sign in.
 - **Claude tool.** A remote MCP server hosted in this app at `/api/mcp/<token>`, so a user adds it to Claude by pasting one URL, with nothing to install. It uses the Streamable HTTP transport and calls the backend directly. Eighteen actions work today: send, call back, request, split, schedule and manage schedules, save and list contacts, balance, spending summary, set spending limit, track, list, settle and remind on debts, history, collect status and resend. A local stdio version is kept in `packages/mcp` for development.
 
 Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Developer Controlled Wallets, Resend for email, Arc testnet, deployed on Vercel. The MCP server uses the Model Context Protocol Streamable HTTP transport.
@@ -54,9 +54,10 @@ Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Develope
 src/
   app/
     page.tsx              Landing
-    dashboard/            Balance, activity, contacts and the connect link
-    claim/[token]/        Recipient collect page
+    dashboard/            Balance, activity, schedules, debts, contacts, connect link
+    claim/[token]/        Recipient collect page, mints a scoped session
     pay/[token]/          Pay a money request
+    auth/                 confirm a magic link, request a link, sign out
     api/
       send/               POST create a send
       cancel/             POST call a send back
@@ -74,13 +75,15 @@ src/
       transaction/[id]/   GET one send status
       resend/             POST resend the collection email
       mcp/[token]/        the remote MCP endpoint, one per connect token
+  middleware.ts           keeps the signed in session fresh on every request
   lib/
+    auth/                 current user, scoped sessions, the one magic link sender
     circle/               Circle client, wallets, transfers, polling
     cue/                  send, cancel, claim, requests, contacts, schedules, limits, debts, summary
     email/                Resend client and templates
     mcp/                  tokens, signed confirmations, tools, JSON-RPC
-    api/                  acting account, shared secret, rate limit, errors
-    supabase/             server side Supabase client
+    api/                  acting account by token, shared secret, rate limit, errors
+    supabase/             service role client, plus the cookie bound auth clients
 supabase/migrations/      001_initial_schema ... 005_limits_debts
 scripts/                  connection and end to end test scripts
 packages/mcp/             local stdio MCP server, for development only
@@ -90,7 +93,7 @@ packages/mcp/             local stdio MCP server, for development only
 
 This is the product. There is no config file to edit and nothing to install.
 
-1. Open the [dashboard](https://cue-navy-psi.vercel.app/dashboard) and create your connect link. It looks like `https://cue-navy-psi.vercel.app/api/mcp/<token>`.
+1. Open the [dashboard](https://cue-navy-psi.vercel.app/dashboard), sign in with your email, then create your connect link. It looks like `https://cue-navy-psi.vercel.app/api/mcp/<token>`.
 2. In Claude, open Settings, then Connectors, then Add custom connector.
 3. Paste the link and save.
 
@@ -100,7 +103,13 @@ The link is a credential. Anyone who has it can send from your account, so keep 
 
 ### Identity and the security boundary
 
-The account is resolved from the token in the URL on every request, in [`src/lib/mcp/tokens.ts`](src/lib/mcp/tokens.ts), and never from anything the client sends, so one person's connection cannot move another person's money. Proper OAuth, an authorization server with consent and short lived tokens, is the intended end state. It is a large security sensitive build, so for now the per user connect token is the boundary. The two step send and cancel confirmation uses tokens signed with the server secret, so it works on a stateless serverless endpoint and cannot be forged.
+The website uses email magic link sign in through Supabase Auth. There are no passwords: you get a link, and opening it proves the address and creates the account on first sign in. The verified email is mapped to the account row in our own `users` table, so existing accounts, created earlier by email, link up rather than duplicating. Sessions are httpOnly, secure cookies, refreshed by [`src/middleware.ts`](src/middleware.ts).
+
+Collecting money is the one flow that stays effortless. A claim link is a long random secret delivered to an inbox, so possession already proves inbox access. Collecting therefore mints a **scoped** session on the spot with no extra email: it can view the dashboard, balance and activity, but it cannot send money, see or create a connect link, change limits, or manage schedules or debts. Those need a full sign in, which is where a collector becomes a real account holder. So a forwarded claim link at worst collects money already destined for that address, it never gains the power to move the rest. A full session always outranks a scoped one, in [`src/lib/auth/current-user.ts`](src/lib/auth/current-user.ts).
+
+For Claude, the account is resolved from the connect token in the URL on every request, in [`src/lib/mcp/tokens.ts`](src/lib/mcp/tokens.ts), and never from anything the client sends. A connect link can only be created by a fully signed in owner, so holding one implies a real account. The local development package now identifies itself the same way, by connect token in the `x-cue-token` header, with the shared API secret layered under it as a coarse service gate. The two step confirmations use tokens signed with the server secret, so they work on a stateless serverless endpoint and cannot be forged.
+
+Sign in emails currently come from Supabase's own sender while our sending domain is being verified. Sending is behind one function, [`sendMagicLink`](src/lib/auth/magic-link.ts), and the branded template is already written, so moving delivery to our domain is a single change. One manual step is needed in the Supabase dashboard for real email links to land on production: add the site URL to Authentication, URL Configuration, and point the magic link template at `/auth/confirm`.
 
 The `packages/mcp` stdio server is kept for local development only. See [`packages/mcp/README.md`](packages/mcp/README.md) for the tools, the confirmation design and how to verify without Claude Desktop. The remote URL above is the real path.
 
@@ -117,10 +126,11 @@ Honest state of the project.
 - Recurring payments run daily on Vercel Cron. The runner is idempotent for the day so a schedule cannot pay twice, a failed run emails the owner and stays active for next month, and the endpoint only answers Vercel.
 - Spending limits are a safety control on an agent that can move money. A daily and a monthly limit live on the account and are enforced in the one send path, so the API, split and scheduled payments are all covered. A send that would breach a limit is refused with how much is left and when it resets, and loosening a limit takes the same confirmation as sending.
 - Debts are tracked without moving money. They resolve names through contacts, show the net position per person, and can be settled by marking them or, when you owe, by sending through the normal preview and confirm. Reminders are friendly, limited to one per debt per day, and never sent automatically.
+- Email sign in through Supabase Auth. No passwords, sessions in httpOnly cookies, sign out, a rate limited link request, existing accounts linked by email, and a signed out dashboard that invites you in rather than locking the door. Collecting money mints a scoped session that can view but not act, so the effortless part stays effortless. Verified end to end on the deployed site: sign up, sign in, an existing account keeping its data, and a brand new recipient collecting into a scoped session.
 
 **In progress**
 
-- Sign in and account linking.
+- Moving sign in email onto our own domain, which is one function change once the domain verifies.
 - The escrow contract on Arc using Circle Contracts.
 
 There is no authentication yet, and the dashboard is a demo view that anyone can open. This is why the project stays on testnet with test funds only.
@@ -151,7 +161,8 @@ Copy `.env.example` to `.env.local` and fill in each value.
 | `SUPABASE_DB_URL` | Session pooler connection string on port 5432, used only by the migration script | Supabase project settings, Database, connection string |
 | `RESEND_API_KEY` | Resend API key for transactional email | Resend dashboard |
 | `NEXT_PUBLIC_APP_URL` | Public base URL, used for claim links and the email logo | `http://localhost:3000` for local |
-| `CUE_API_SECRET` | Shared secret required on `POST /api/send` | Any strong random string you choose |
+| `CUE_API_SECRET` | Shared service secret for the token authed API routes, also signs the scoped session cookie | Any strong random string you choose |
+| `CRON_SECRET` | Bearer token Vercel Cron sends to the scheduled payments runner | Set the same value in Vercel and it attaches it automatically |
 | `CUE_MAX_SEND_USDC` | Largest amount a single send may move, in dollars | Set to `5` for testnet |
 | `CUE_ALLOW_SHORT_WINDOW` | Allows cancel windows shorter than one hour, for tests | Set to `true` locally, leave unset in production |
 
@@ -193,9 +204,9 @@ Open `http://localhost:3000`.
 ## Security notes
 
 - Testnet only, with test funds. No real money is involved.
-- There is no authentication yet. Sign in ships in a later release.
-- `POST /api/send` is protected by a shared secret in the `x-cue-secret` header as an interim measure until real auth lands. The MCP server will use the same secret.
-- There is a per send amount cap and an in memory per IP rate limit on the send and claim endpoints.
+- Email magic link sign in through Supabase Auth. Sessions are httpOnly, secure cookies. Collecting money grants only a scoped session that can view but not move money; acting needs a full sign in.
+- The website acts as the signed in user, taken from the session and never from a client supplied id. The token authed API routes, which only the local development package calls, identify the account by a connect token in `x-cue-token`, with the shared secret in `x-cue-secret` layered under it.
+- There is a per send amount cap, per account daily and monthly spending limits, and an in memory per IP rate limit on the send, claim and sign in endpoints.
 - All keys currently in use are testnet keys and will be rotated before any mainnet use.
 
 ## Team

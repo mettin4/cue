@@ -38,7 +38,7 @@ export class CueClient {
   constructor(
     private readonly baseUrl: string,
     private readonly secret: string,
-    private readonly user: string,
+    private readonly token: string,
   ) {}
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -49,7 +49,7 @@ export class CueClient {
         headers: {
           "content-type": "application/json",
           "x-cue-secret": this.secret,
-          "x-cue-user": this.user,
+          "x-cue-token": this.token,
           ...(init?.headers ?? {}),
         },
       });

@@ -1,16 +1,14 @@
 "use server";
 
+import { requireFullUser } from "@/lib/auth/current-user";
 import { deleteContact } from "@/lib/cue/contacts";
 
 /**
- * Demo affordance for removing a saved contact. There is no sign in yet, so this
- * acts for the account id the dashboard is viewing. Real auth replaces that in a
- * later phase.
+ * Removing a saved contact. The account comes from the signed in session and a
+ * full sign in is required.
  */
-export async function deleteContactAction(
-  userId: string,
-  id: string,
-): Promise<{ ok: boolean }> {
-  const ok = await deleteContact(userId, id);
+export async function deleteContactAction(id: string): Promise<{ ok: boolean }> {
+  const user = await requireFullUser();
+  const ok = await deleteContact(user.id, id);
   return { ok };
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { Activity } from "lucide-react";
+import { Activity, LogOut } from "lucide-react";
 
 import { StatusText } from "@/components/ui/status-chip";
+import { signOut } from "@/app/auth/actions";
+import { getCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
 import { appUrl } from "@/lib/config";
 import { listContacts } from "@/lib/cue/contacts";
 import { listDebts } from "@/lib/cue/debts";
@@ -10,20 +12,15 @@ import { maskEmail, toAmountString } from "@/lib/cue/money";
 import { formatRunDate, listSchedules, nextRunDate, ordinal } from "@/lib/cue/schedules";
 import { getActiveToken } from "@/lib/mcp/tokens";
 import type { ActivityItem, DashboardData } from "@/lib/cue/dashboard";
-import {
-  getDashboardData,
-  listDevUsers,
-  pickDemoUser,
-  resolveDashboardUser,
-} from "@/lib/cue/dashboard";
+import { getDashboardData } from "@/lib/cue/dashboard";
 
 import { AddMoneyButton } from "./add-money-button";
 import { CancelButton } from "./cancel-button";
 import { ConnectCard } from "./connect-card";
 import { ContactsCard } from "./contacts-card";
 import { DebtsCard } from "./debts-card";
-import { DevUserSwitcher } from "./dev-user-switcher";
 import { SchedulesCard } from "./schedules-card";
+import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -60,16 +57,38 @@ function groupByDay(items: ActivityItem[]): { day: string; items: ActivityItem[]
   return groups;
 }
 
-function ActivityRow({
-  item,
-  viewerId,
-}: {
-  item: ActivityItem;
-  viewerId: string;
-}) {
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="mesh-hero pointer-events-none absolute inset-x-0 top-0 h-[38vh] opacity-70"
+      />
+      <div aria-hidden="true" className="grain" />
+      <div className="relative z-10 mx-auto w-full max-w-2xl px-5 py-12 sm:px-8 sm:py-16">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function SignOutButton() {
+  return (
+    <form action={signOut}>
+      <button
+        type="submit"
+        className="ring-focus inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium text-muted-foreground transition-all duration-150 hover:border-border-strong hover:bg-secondary hover:text-foreground active:scale-[0.98]"
+      >
+        <LogOut aria-hidden="true" className="size-3.5" />
+        Sign out
+      </button>
+    </form>
+  );
+}
+
+function ActivityRow({ item }: { item: ActivityItem }) {
   const incoming = item.direction === "in";
-  const showUnlock =
-    item.status === "pending_claim" && item.secondsUntilUnlock > 0;
+  const showUnlock = item.status === "pending_claim" && item.secondsUntilUnlock > 0;
 
   return (
     <li className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-border/50 py-3.5">
@@ -92,7 +111,6 @@ function ActivityRow({
         {item.canCancel ? (
           <CancelButton
             transactionId={item.id}
-            senderUserId={viewerId}
             amount={item.amount}
             counterparty={item.counterparty}
           />
@@ -148,75 +166,168 @@ function BalanceBlock({ data, usage }: { data: DashboardData; usage: Usage }) {
 
       {!data.hasAccount ? (
         <p className="mt-4 text-xs leading-relaxed text-subtle-foreground">
-          This account has not received anything yet. Your balance appears here
-          as soon as money arrives.
+          This account has not received anything yet. Your balance appears here as
+          soon as money arrives.
         </p>
       ) : null}
     </section>
   );
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ user?: string }>;
-}) {
-  const { user: userParam } = await searchParams;
-  const devUsers = await listDevUsers();
-
-  // Never a dead end: fall back to the most active account as a demo view.
-  let viewer = userParam ? await resolveDashboardUser(userParam) : null;
-  const isDemo = !viewer;
-  if (!viewer) viewer = await pickDemoUser();
-
+function ActivitySection({ data }: { data: DashboardData }) {
+  const groups = groupByDay(data.activity);
   return (
-    <div className="relative overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="mesh-hero pointer-events-none absolute inset-x-0 top-0 h-[38vh] opacity-70"
-      />
-      <div aria-hidden="true" className="grain" />
-
-      <div className="relative z-10 mx-auto w-full max-w-2xl px-5 py-12 sm:px-8 sm:py-16">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          {viewer ? (
-            <DevUserSwitcher
-              users={devUsers.map((u) => ({
-                id: u.id,
-                label: u.role,
-                masked: maskEmail(u.email),
-              }))}
-              currentUserId={viewer.id}
-            />
-          ) : null}
+    <section className="mt-12">
+      <h2 className="text-[11px] font-medium tracking-[0.2em] text-subtle-foreground uppercase">
+        Activity
+      </h2>
+      {data.activity.length === 0 ? (
+        <p className="mt-4 flex items-center gap-2.5 text-sm text-muted-foreground">
+          <Activity aria-hidden="true" className="size-4 text-subtle-foreground" />
+          Nothing yet. Ask Claude to send money and it shows up here.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-6">
+          {groups.map((group) => (
+            <div key={group.day}>
+              <p className="text-[11px] font-medium tracking-wide text-subtle-foreground uppercase">
+                {group.day}
+              </p>
+              <ul className="mt-1">
+                {group.items.map((item) => (
+                  <ActivityRow key={item.id} item={item} />
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
+      )}
+    </section>
+  );
+}
 
-        {isDemo && viewer ? (
-          <p className="mt-1.5 text-[13px] text-subtle-foreground">
-            Demo view until sign in ships.
-          </p>
-        ) : null}
-
-        {!viewer ? (
-          <p className="mt-8 text-sm text-muted-foreground">
-            No accounts exist yet.
-          </p>
-        ) : (
-          <DashboardBody viewer={viewer} />
-        )}
-      </div>
+function Footer() {
+  return (
+    <div className="mt-12 space-y-2 border-t border-border/60 pt-8 text-[13px] leading-relaxed text-subtle-foreground">
+      <p>This is a testnet demo. No real money is involved.</p>
+      <p>
+        Money stays in the sender&apos;s account until it is collected, and the
+        sender can call any send back during the first hour.
+      </p>
+      <p>
+        Built by Team MTH.{" "}
+        <a
+          href="https://github.com/mettin4/cue"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ring-focus rounded underline underline-offset-4 transition-colors duration-150 hover:text-foreground"
+        >
+          Source
+        </a>
+      </p>
     </div>
   );
 }
 
-async function DashboardBody({
-  viewer,
+export default async function DashboardPage({
+  searchParams,
 }: {
-  viewer: NonNullable<Awaited<ReturnType<typeof resolveDashboardUser>>>;
+  searchParams: Promise<{ signin?: string }>;
 }) {
+  const { signin } = await searchParams;
+  const current = await getCurrentUser();
+
+  if (!current) {
+    return (
+      <Shell>
+        <SignedOut expired={signin === "expired"} />
+        <Footer />
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="mt-1 truncate text-[13px] text-subtle-foreground">
+            {current.scope === "full"
+              ? current.user.email
+              : `Collected to ${current.user.email}`}
+          </p>
+        </div>
+        <SignOutButton />
+      </div>
+
+      {current.scope === "full" ? (
+        <FullDashboard current={current} />
+      ) : (
+        <ScopedDashboard current={current} />
+      )}
+
+      <Footer />
+    </Shell>
+  );
+}
+
+function SignedOut({ expired }: { expired: boolean }) {
+  return (
+    <section className="max-w-xl">
+      <h1 className="text-2xl font-semibold tracking-tight">Cue</h1>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        Cue lets you send money by chatting with Claude. The person receiving it
+        only needs an email address. Sign in to see your balance and activity, get
+        your personal link for Claude, and set things up. No password: we email
+        you a link.
+      </p>
+
+      {expired ? (
+        <p className="mt-4 text-sm text-destructive">
+          That sign in link has expired. Enter your email for a fresh one.
+        </p>
+      ) : null}
+
+      <div className="mt-6">
+        <SignInForm />
+      </div>
+    </section>
+  );
+}
+
+async function ScopedDashboard({ current }: { current: CurrentUser }) {
+  const data = await getDashboardData(current.user);
+  const usage = await getUsage(current.user.id);
+
+  return (
+    <>
+      <div className="mt-8">
+        <BalanceBlock data={data} usage={usage} />
+      </div>
+
+      <ActivitySection data={data} />
+
+      <section className="mt-12 border-t border-border/60 pt-8">
+        <h2 className="text-[11px] font-medium tracking-[0.2em] text-subtle-foreground uppercase">
+          Sign in to do more
+        </h2>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          You collected money, so you can see your balance and activity. Sending,
+          your connect link for Claude, spending limits, scheduled payments and
+          debts need a full sign in to the same email.
+        </p>
+        <div className="mt-5">
+          <SignInForm label="Sign in with your email to unlock everything" cta="Sign in" />
+        </div>
+      </section>
+    </>
+  );
+}
+
+async function FullDashboard({ current }: { current: CurrentUser }) {
+  const viewer = current.user;
   const data = await getDashboardData(viewer);
-  const groups = groupByDay(data.activity);
+  const usage = await getUsage(viewer.id);
 
   const token = await getActiveToken(viewer.id);
   const connectUrl = token ? `${appUrl()}/api/mcp/${token.token}` : null;
@@ -238,8 +349,6 @@ async function DashboardBody({
     active: s.active,
   }));
 
-  const usage = await getUsage(viewer.id);
-
   const people = await listDebts(viewer.id);
   const debtViews = people.map((p) => {
     const tone = p.net > 0 ? ("in" as const) : p.net < 0 ? ("out" as const) : ("even" as const);
@@ -249,13 +358,7 @@ async function DashboardBody({
         : p.net < 0
           ? `you owe $${Math.abs(p.net).toFixed(2)}`
           : "settled up";
-    return {
-      key: p.email ?? `name:${p.label}`,
-      label: p.label,
-      netLabel,
-      tone,
-      ids: p.items.map((i) => i.id),
-    };
+    return { key: p.email ?? `name:${p.label}`, label: p.label, netLabel, tone, ids: p.items.map((i) => i.id) };
   });
 
   return (
@@ -264,67 +367,22 @@ async function DashboardBody({
         <BalanceBlock data={data} usage={usage} />
       </div>
 
-      <section className="mt-12">
-        <h2 className="text-[11px] font-medium tracking-[0.2em] text-subtle-foreground uppercase">
-          Activity
-        </h2>
-
-        {data.activity.length === 0 ? (
-          <p className="mt-4 flex items-center gap-2.5 text-sm text-muted-foreground">
-            <Activity aria-hidden="true" className="size-4 text-subtle-foreground" />
-            Nothing yet. Ask Claude to send money and it shows up here.
-          </p>
-        ) : (
-          <div className="mt-4 space-y-6">
-            {groups.map((group) => (
-              <div key={group.day}>
-                <p className="text-[11px] font-medium tracking-wide text-subtle-foreground uppercase">
-                  {group.day}
-                </p>
-                <ul className="mt-1">
-                  {group.items.map((item) => (
-                    <ActivityRow key={item.id} item={item} viewerId={viewer.id} />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <ActivitySection data={data} />
 
       <div className="mt-12">
-        <SchedulesCard userId={viewer.id} initialSchedules={scheduleViews} />
+        <SchedulesCard initialSchedules={scheduleViews} />
       </div>
 
       <div className="mt-12">
-        <DebtsCard userId={viewer.id} initialDebts={debtViews} />
+        <DebtsCard initialDebts={debtViews} />
       </div>
 
       <div className="mt-12">
-        <ContactsCard userId={viewer.id} initialContacts={contactViews} />
+        <ContactsCard initialContacts={contactViews} />
       </div>
 
       <div className="mt-12">
-        <ConnectCard userId={viewer.id} initialUrl={connectUrl} />
-      </div>
-
-      <div className="mt-12 space-y-2 border-t border-border/60 pt-8 text-[13px] leading-relaxed text-subtle-foreground">
-        <p>This is a testnet demo. No real money is involved.</p>
-        <p>
-          Money stays in the sender&apos;s account until it is collected, and the
-          sender can call any send back during the first hour.
-        </p>
-        <p>
-          Built by Team MTH.{" "}
-          <a
-            href="https://github.com/mettin4/cue"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ring-focus rounded underline underline-offset-4 transition-colors duration-150 hover:text-foreground"
-          >
-            Source
-          </a>
-        </p>
+        <ConnectCard initialUrl={connectUrl} />
       </div>
     </>
   );

@@ -12,19 +12,13 @@ export type ContactView = { id: string; name: string; masked: string };
  * so a person can see and clear what is kept about them. Emails are masked, the
  * same as everywhere else a public page renders one.
  */
-export function ContactsCard({
-  userId,
-  initialContacts,
-}: {
-  userId: string;
-  initialContacts: ContactView[];
-}) {
+export function ContactsCard({ initialContacts }: { initialContacts: ContactView[] }) {
   const [contacts, setContacts] = useState(initialContacts);
   const [pending, start] = useTransition();
 
   function remove(id: string) {
     start(async () => {
-      const { ok } = await deleteContactAction(userId, id);
+      const { ok } = await deleteContactAction(id);
       if (ok) setContacts((current) => current.filter((c) => c.id !== id));
     });
   }

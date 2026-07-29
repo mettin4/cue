@@ -1,33 +1,27 @@
 "use server";
 
+import { requireFullUser } from "@/lib/auth/current-user";
 import { deleteSchedule, setScheduleActive } from "@/lib/cue/schedules";
 
 /**
- * Demo affordances for managing recurring payments. There is no sign in yet, so
- * these act for the account id the dashboard is viewing. Real auth replaces that
- * in a later phase.
+ * Managing recurring payments. The account comes from the signed in session and
+ * a full sign in is required, so a scoped session cannot change anything.
  */
 
-export async function pauseScheduleAction(
-  userId: string,
-  id: string,
-): Promise<{ ok: boolean }> {
-  const updated = await setScheduleActive(userId, id, false);
+export async function pauseScheduleAction(id: string): Promise<{ ok: boolean }> {
+  const user = await requireFullUser();
+  const updated = await setScheduleActive(user.id, id, false);
   return { ok: Boolean(updated) };
 }
 
-export async function resumeScheduleAction(
-  userId: string,
-  id: string,
-): Promise<{ ok: boolean }> {
-  const updated = await setScheduleActive(userId, id, true);
+export async function resumeScheduleAction(id: string): Promise<{ ok: boolean }> {
+  const user = await requireFullUser();
+  const updated = await setScheduleActive(user.id, id, true);
   return { ok: Boolean(updated) };
 }
 
-export async function deleteScheduleAction(
-  userId: string,
-  id: string,
-): Promise<{ ok: boolean }> {
-  const ok = await deleteSchedule(userId, id);
+export async function deleteScheduleAction(id: string): Promise<{ ok: boolean }> {
+  const user = await requireFullUser();
+  const ok = await deleteSchedule(user.id, id);
   return { ok };
 }

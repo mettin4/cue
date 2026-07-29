@@ -14,15 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cancelSendAction } from "./cancel-actions";
 
 export function CancelButton({
   transactionId,
-  senderUserId,
   amount,
   counterparty,
 }: {
   transactionId: string;
-  senderUserId: string;
   amount: string;
   counterparty: string;
 }) {
@@ -36,18 +35,12 @@ export function CancelButton({
     setError(null);
 
     try {
-      const response = await fetch("/api/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionId, senderUserId }),
-      });
-      const payload = await response.json();
-
-      if (!response.ok || !payload.ok) {
+      const result = await cancelSendAction(transactionId);
+      if (!result.ok) {
         setError(
-          /already collected/i.test(payload.error ?? "")
+          /already collected/i.test(result.error ?? "")
             ? "This was collected a moment ago, so it can no longer be called back."
-            : "We could not call this back. Please try again.",
+            : result.error ?? "We could not call this back. Please try again.",
         );
         setBusy(false);
         return;

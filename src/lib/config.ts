@@ -41,6 +41,27 @@ export function resendApiKey(): string {
 }
 
 /**
+ * Public Supabase project URL and anon key, safe to expose to the browser. Used
+ * by the auth clients for email sign in.
+ */
+export function supabaseUrl(): string {
+  return requireEnv("NEXT_PUBLIC_SUPABASE_URL");
+}
+
+export function supabaseAnonKey(): string {
+  return requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+}
+
+/**
+ * Secret for signing scoped session cookies, the kind minted when someone
+ * collects money without a full sign in. Reuses the API secret so no new
+ * variable is needed.
+ */
+export function sessionSecret(): string {
+  return requireEnv("CUE_API_SECRET");
+}
+
+/**
  * Public base URL, used to build claim links that land in email.
  */
 export function appUrl(): string {

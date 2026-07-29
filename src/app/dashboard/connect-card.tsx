@@ -20,13 +20,7 @@ const STEPS = [
  * create one. A leaked link can move money, so revoke and regenerate are here
  * too. No config file to edit, the link is the whole setup.
  */
-export function ConnectCard({
-  userId,
-  initialUrl,
-}: {
-  userId: string;
-  initialUrl: string | null;
-}) {
+export function ConnectCard({ initialUrl }: { initialUrl: string | null }) {
   const [url, setUrl] = useState(initialUrl);
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
@@ -102,7 +96,7 @@ export function ConnectCard({
             <button
               type="button"
               disabled={pending}
-              onClick={() => run(() => revokeConnect(userId))}
+              onClick={() => run(() => revokeConnect())}
               className="ring-focus rounded text-[13px] text-muted-foreground transition-colors duration-150 hover:text-destructive disabled:opacity-50"
             >
               Revoke
@@ -110,7 +104,7 @@ export function ConnectCard({
             <button
               type="button"
               disabled={pending}
-              onClick={() => run(() => regenerateConnect(userId))}
+              onClick={() => run(() => regenerateConnect())}
               className="ring-focus rounded text-[13px] text-muted-foreground transition-colors duration-150 hover:text-foreground disabled:opacity-50"
             >
               Regenerate
@@ -127,7 +121,7 @@ export function ConnectCard({
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => generateConnect(userId))}
+            onClick={() => run(() => generateConnect())}
             className="ring-focus inline-flex h-9 items-center rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground shadow-[0_8px_26px_-12px_rgb(56_211_137/0.9)] transition-all duration-150 hover:bg-[#45e096] active:scale-[0.97] disabled:opacity-60"
           >
             {pending ? "Creating…" : "Create connect link"}

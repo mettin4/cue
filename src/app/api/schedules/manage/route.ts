@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     requireApiSecret(request);
 
     const body = bodySchema.parse(await request.json());
-    const actor = await resolveActingAccount(request, body.senderUserId);
+    const actor = await resolveActingAccount(request);
 
     if (body.action === "delete") {
       const ok = await deleteSchedule(actor.id, body.scheduleId);

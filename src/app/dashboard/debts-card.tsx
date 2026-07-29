@@ -18,19 +18,13 @@ export type DebtView = {
  * and a settle action. Marking settled here moves no money, it just clears the
  * record.
  */
-export function DebtsCard({
-  userId,
-  initialDebts,
-}: {
-  userId: string;
-  initialDebts: DebtView[];
-}) {
+export function DebtsCard({ initialDebts }: { initialDebts: DebtView[] }) {
   const [debts, setDebts] = useState(initialDebts);
   const [pending, start] = useTransition();
 
   function settle(key: string, ids: string[]) {
     start(async () => {
-      const { settled } = await settleDebtsAction(userId, ids);
+      const { settled } = await settleDebtsAction(ids);
       if (settled > 0) setDebts((cur) => cur.filter((d) => d.key !== key));
     });
   }

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     requireApiSecret(request);
 
     const body = bodySchema.parse(await request.json());
-    const actor = await resolveActingAccount(request, body.requesterUserId);
+    const actor = await resolveActingAccount(request);
 
     const result = await cancelRequest({
       requestId: body.requestId,

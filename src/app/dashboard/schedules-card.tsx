@@ -23,33 +23,27 @@ export type ScheduleView = {
  * resume or delete each one. Recipients are masked, the same as everywhere else
  * a public page renders an address.
  */
-export function SchedulesCard({
-  userId,
-  initialSchedules,
-}: {
-  userId: string;
-  initialSchedules: ScheduleView[];
-}) {
+export function SchedulesCard({ initialSchedules }: { initialSchedules: ScheduleView[] }) {
   const [schedules, setSchedules] = useState(initialSchedules);
   const [pending, start] = useTransition();
 
   function pause(id: string) {
     start(async () => {
-      const { ok } = await pauseScheduleAction(userId, id);
+      const { ok } = await pauseScheduleAction(id);
       if (ok) setSchedules((cur) => cur.map((s) => (s.id === id ? { ...s, active: false } : s)));
     });
   }
 
   function resume(id: string) {
     start(async () => {
-      const { ok } = await resumeScheduleAction(userId, id);
+      const { ok } = await resumeScheduleAction(id);
       if (ok) setSchedules((cur) => cur.map((s) => (s.id === id ? { ...s, active: true } : s)));
     });
   }
 
   function remove(id: string) {
     start(async () => {
-      const { ok } = await deleteScheduleAction(userId, id);
+      const { ok } = await deleteScheduleAction(id);
       if (ok) setSchedules((cur) => cur.filter((s) => s.id !== id));
     });
   }
