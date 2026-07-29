@@ -14,6 +14,7 @@ export type ClaimResult = {
   amount: string;
   circleTxId: string;
   txHash?: string;
+  recipientUserId: string;
   recipientWalletId: string;
   recipientWalletAddress: string;
   email: EmailResult;
@@ -172,6 +173,7 @@ export async function claimSend(params: {
     amount,
     circleTxId,
     txHash,
+    recipientUserId: recipient.id,
     recipientWalletId: recipient.circle_wallet_id as string,
     recipientWalletAddress: recipient.circle_wallet_address as string,
     email,

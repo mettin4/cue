@@ -62,6 +62,24 @@ export async function resolveDashboardUser(
  * lands on the dashboard without choosing an account still sees a populated
  * page rather than a dead end. Falls back to the earliest user.
  */
+const PERSONAL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "yahoo.com",
+  "icloud.com",
+  "me.com",
+  "proton.me",
+  "protonmail.com",
+]);
+
+function isPersonalDomain(email: string): boolean {
+  const domain = email.split("@")[1] ?? "";
+  return PERSONAL_DOMAINS.has(domain);
+}
+
 export async function pickDemoUser(): Promise<UserRow | null> {
   const supabase = getSupabaseAdmin();
 
@@ -79,8 +97,10 @@ export async function pickDemoUser(): Promise<UserRow | null> {
 
   // Score each account by how well it demonstrates the product: a funded
   // account with a mix of statuses beats an empty one with a single status.
+  // Real personal email providers are penalised heavily so the public default
+  // never lands on someone's own address, even masked.
   let bestUser: UserRow | null = null;
-  let bestScore = -1;
+  let bestScore = -Infinity;
 
   for (const user of users as UserRow[]) {
     const email = normaliseEmail(user.email);
@@ -96,7 +116,8 @@ export async function pickDemoUser(): Promise<UserRow | null> {
     const score =
       (user.circle_wallet_id ? 100 : 0) + // a real balance matters most
       statuses.size * 10 + // a mix of collected / waiting / called back
-      Math.min(count, 9); // some activity, capped so it never dominates
+      Math.min(count, 9) + // some activity, capped so it never dominates
+      (isPersonalDomain(email) ? -1000 : 0); // keep a real address off the default
 
     if (score > bestScore) {
       bestScore = score;
@@ -235,9 +256,12 @@ export async function listDevUsers(): Promise<
 
   const senderIds = new Set((senders ?? []).map((s) => s.sender_id));
 
-  return (users ?? []).map((u) => ({
-    id: u.id,
-    email: u.email,
-    role: senderIds.has(u.id) ? "sender" : "recipient",
-  }));
+  // Never list a real personal address in the public switcher, even masked.
+  return (users ?? [])
+    .filter((u) => !isPersonalDomain(normaliseEmail(u.email)))
+    .map((u) => ({
+      id: u.id,
+      email: u.email,
+      role: senderIds.has(u.id) ? "sender" : "recipient",
+    }));
 }

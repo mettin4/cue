@@ -50,7 +50,7 @@ export function CollectForm({
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [collectedEmail, setCollectedEmail] = useState("");
+  const [recipientUserId, setRecipientUserId] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,7 +72,7 @@ export function CollectForm({
         return;
       }
 
-      setCollectedEmail(email);
+      setRecipientUserId(payload.data?.recipientUserId ?? "");
       setStatus("done");
     } catch {
       setError("We could not reach Cue. Check your connection and try again.");
@@ -98,7 +98,7 @@ export function CollectForm({
         </p>
 
         <Link
-          href={`/dashboard?user=${encodeURIComponent(collectedEmail)}`}
+          href={recipientUserId ? `/dashboard?user=${recipientUserId}` : "/dashboard"}
           className="ring-focus group mt-7 inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground shadow-[0_8px_30px_-10px_rgb(56_211_137/0.7)] transition-all duration-150 hover:bg-[#45e096] active:scale-[0.98]"
         >
           Go to Dashboard

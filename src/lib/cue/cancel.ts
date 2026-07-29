@@ -125,5 +125,5 @@ async function explainCancelFailure(params: {
     return new Error("This send was already called back.");
   }
 
-  return new Error(`This send cannot be called back, its status is ${row.status}.`);
+  return new Error("This send is no longer active, so it cannot be called back.");
 }

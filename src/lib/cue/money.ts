@@ -35,7 +35,7 @@ export function parseAmount(input: string | number): string {
 
   const value = Number(raw);
   if (!Number.isFinite(value) || value <= 0) {
-    throw new Error("Amount must be greater than zero.");
+    throw new Error("Amount must be greater than zero. Enter something like 5.00.");
   }
 
   if (value < MIN_AMOUNT) {
@@ -70,7 +70,7 @@ export function normaliseEmail(email: string): string {
 
 /**
  * Masks an email for display to the other party, for example
- * "metin@example.com" becomes "m****@example.com".
+ * "alex@example.com" becomes "a***@example.com".
  */
 export function maskEmail(email: string): string {
   const [local, domain] = email.split("@");

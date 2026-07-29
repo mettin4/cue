@@ -55,14 +55,18 @@ export async function createSend(params: {
   const recipientEmail = normaliseEmail(params.recipientEmail);
 
   if (!recipientEmail.includes("@")) {
-    throw new Error(`"${params.recipientEmail}" is not a valid email address.`);
+    throw new Error(
+      `"${params.recipientEmail}" does not look like a valid email address. Check the address and try again.`,
+    );
   }
 
   // Cap the amount while on testnet. Enforced here so the API and the future
   // MCP server are both bound by it.
   const cap = maxSendUsdc();
   if (Number(amount) > cap) {
-    throw new Error(`Amount is above the current limit of ${cap.toFixed(2)} dollars per send.`);
+    throw new Error(
+      `That is more than the current limit of ${cap.toFixed(2)} dollars per send. Try a smaller amount.`,
+    );
   }
 
   // Floor the cancel window to the default. A shorter window would shrink the
@@ -89,7 +93,9 @@ export async function createSend(params: {
   }
 
   if (normaliseEmail(sender.email) === recipientEmail) {
-    throw new Error("You cannot send money to yourself.");
+    throw new Error(
+      "Money can only be sent to someone else. Please use a different email address, not your own.",
+    );
   }
 
   await assertTreasuryCanCover(amount);
@@ -175,7 +181,7 @@ async function assertTreasuryCanCover(amount: string): Promise<void> {
 
   if (Number(balance) < Number(required)) {
     throw new Error(
-      `Not enough funds. The account holds ${balance} but ${required} is needed, which is ${committed} already promised to earlier sends plus ${amount} for this one.`,
+      `There is not enough available to send ${amount} dollars right now. Add money or try a smaller amount.`,
     );
   }
 }

@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       amount: result.amount,
       circleTxId: result.circleTxId,
       txHash: result.txHash,
+      recipientUserId: result.recipientUserId,
       status: "claimed",
       emailSent: result.email.ok,
     });
