@@ -16,7 +16,7 @@ Set these in the environment, which for Claude Desktop means the `env` block of 
 
 ## Tools
 
-Twelve tools, matching the remote server.
+Eighteen tools, matching the remote server.
 
 - **send_money** recipient and amount. The recipient can be an email or a saved contact name. Two steps, see confirmation below.
 - **cancel_send** calls a send back before it is collected. Takes a send reference, or the recipient email to find the most recent uncollected send. Two steps.
@@ -26,7 +26,13 @@ Twelve tools, matching the remote server.
 - **manage_schedules** lists recurring payments, and pauses, resumes or deletes one. Pause and resume are immediate; delete takes two steps.
 - **save_contact** saves a name and email so a person can be named instead of typed as an email next time.
 - **list_contacts** lists the saved contacts.
-- **get_balance** current balance in dollars, plus totals and how many sends are waiting.
+- **get_spending_summary** money in and out over a period, with the top recipients, written as a sentence. Optional period: this week, this month, last month, or a custom range.
+- **set_spending_limit** sets a daily limit, a monthly limit, or both, as a safety control. Setting a first limit or lowering one is immediate; raising or removing one loosens the control and takes two steps.
+- **track_debt** records money owed in either direction, resolving names through contacts, without moving anything.
+- **list_debts** shows open debts both ways with the net position per person.
+- **settle_debt** marks a debt settled. If you owe, it can settle by sending, which takes two steps and never sends automatically.
+- **remind_debt** emails a friendly reminder to someone who owes you, at most once per debt per day.
+- **get_balance** current balance in dollars, plus totals, how many sends are waiting, and any spending limit with how much is left.
 - **get_history** recent activity, with an optional limit, an optional direction, and an optional type of `payments` (default) or `requests`.
 - **check_claim_status** whether a specific send has been collected, and how long is left on the call back window.
 - **resend_claim_link** sends the collection email again for a pending send.
@@ -35,11 +41,13 @@ When a recipient is a name rather than an email, it is looked up in the account'
 
 Recurring payments run daily on the server through Vercel Cron, not from this package. Each run goes through the same amount limit and balance check as a normal send, and a run that fails emails the owner and leaves the schedule active for next month.
 
+Spending limits are enforced on the server in the one send path, so this package, the API, split and scheduled payments are all bound by them. A send that would breach a limit is refused with how much is left and when it resets. Debts move no money on their own.
+
 Output is written for a person. Amounts are dollars, times are plain phrases like "about an hour", and email addresses are masked. The words crypto, wallet, blockchain and token never appear.
 
 ## Confirmation before money moves
 
-MCP has an `elicitation` feature where a server can ask the client for input mid call, but it is optional, newly introduced with a design the spec says may still change, and it requires the client to declare the capability. Rather than depend on Claude Desktop supporting it, `send_money`, `cancel_send`, `request_money`, `split_money`, `schedule_payment` and deleting through `manage_schedules` use a two call pattern that works everywhere:
+MCP has an `elicitation` feature where a server can ask the client for input mid call, but it is optional, newly introduced with a design the spec says may still change, and it requires the client to declare the capability. Rather than depend on Claude Desktop supporting it, `send_money`, `cancel_send`, `request_money`, `split_money`, `schedule_payment`, deleting through `manage_schedules`, loosening a limit through `set_spending_limit` and settling by sending through `settle_debt` use a two call pattern that works everywhere:
 
 1. The first call returns a preview of exactly what will happen, amount and recipient, and a confirmation token. No money moves.
 2. Claude shows the preview to the user and waits for approval.

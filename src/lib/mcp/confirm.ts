@@ -48,6 +48,21 @@ export type ConfirmPayload =
       amount: string;
       recipient: string;
       exp: number;
+    }
+  | {
+      kind: "set_limit";
+      userId: string;
+      daily: number | null | undefined;
+      monthly: number | null | undefined;
+      exp: number;
+    }
+  | {
+      kind: "settle_send";
+      userId: string;
+      debtId: string;
+      recipientEmail: string;
+      amount: string;
+      exp: number;
     };
 
 function b64url(input: Buffer | string): string {
@@ -75,6 +90,12 @@ export function issueConfirmation(
 ): string;
 export function issueConfirmation(
   payload: Omit<Extract<ConfirmPayload, { kind: "schedule_delete" }>, "exp">,
+): string;
+export function issueConfirmation(
+  payload: Omit<Extract<ConfirmPayload, { kind: "set_limit" }>, "exp">,
+): string;
+export function issueConfirmation(
+  payload: Omit<Extract<ConfirmPayload, { kind: "settle_send" }>, "exp">,
 ): string;
 export function issueConfirmation(payload: Omit<ConfirmPayload, "exp">): string {
   const full = { ...payload, exp: Date.now() + TTL_MS } as ConfirmPayload;

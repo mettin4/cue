@@ -4,6 +4,8 @@ import { Activity } from "lucide-react";
 import { StatusText } from "@/components/ui/status-chip";
 import { appUrl } from "@/lib/config";
 import { listContacts } from "@/lib/cue/contacts";
+import { listDebts } from "@/lib/cue/debts";
+import { getUsage, type Usage } from "@/lib/cue/limits";
 import { maskEmail, toAmountString } from "@/lib/cue/money";
 import { formatRunDate, listSchedules, nextRunDate, ordinal } from "@/lib/cue/schedules";
 import { getActiveToken } from "@/lib/mcp/tokens";
@@ -19,6 +21,7 @@ import { AddMoneyButton } from "./add-money-button";
 import { CancelButton } from "./cancel-button";
 import { ConnectCard } from "./connect-card";
 import { ContactsCard } from "./contacts-card";
+import { DebtsCard } from "./debts-card";
 import { DevUserSwitcher } from "./dev-user-switcher";
 import { SchedulesCard } from "./schedules-card";
 
@@ -99,7 +102,7 @@ function ActivityRow({
   );
 }
 
-function BalanceBlock({ data }: { data: DashboardData }) {
+function BalanceBlock({ data, usage }: { data: DashboardData; usage: Usage }) {
   const stats = data.stats;
   return (
     <section>
@@ -123,6 +126,25 @@ function BalanceBlock({ data }: { data: DashboardData }) {
         <span aria-hidden="true" className="mx-2 text-subtle-foreground">·</span>
         <span className="tabular text-primary">{stats.pendingCount}</span> pending
       </p>
+
+      {usage.daily || usage.monthly ? (
+        <div className="mt-3 space-y-0.5 text-[13px] text-subtle-foreground">
+          {usage.daily ? (
+            <p>
+              Daily limit ${usage.daily.limit}
+              <span aria-hidden="true" className="mx-1.5">·</span>
+              <span className="tabular">${usage.daily.remaining}</span> left today
+            </p>
+          ) : null}
+          {usage.monthly ? (
+            <p>
+              Monthly limit ${usage.monthly.limit}
+              <span aria-hidden="true" className="mx-1.5">·</span>
+              <span className="tabular">${usage.monthly.remaining}</span> left this month
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {!data.hasAccount ? (
         <p className="mt-4 text-xs leading-relaxed text-subtle-foreground">
@@ -216,10 +238,30 @@ async function DashboardBody({
     active: s.active,
   }));
 
+  const usage = await getUsage(viewer.id);
+
+  const people = await listDebts(viewer.id);
+  const debtViews = people.map((p) => {
+    const tone = p.net > 0 ? ("in" as const) : p.net < 0 ? ("out" as const) : ("even" as const);
+    const netLabel =
+      p.net > 0
+        ? `owes you $${p.net.toFixed(2)}`
+        : p.net < 0
+          ? `you owe $${Math.abs(p.net).toFixed(2)}`
+          : "settled up";
+    return {
+      key: p.email ?? `name:${p.label}`,
+      label: p.label,
+      netLabel,
+      tone,
+      ids: p.items.map((i) => i.id),
+    };
+  });
+
   return (
     <>
       <div className="mt-8">
-        <BalanceBlock data={data} />
+        <BalanceBlock data={data} usage={usage} />
       </div>
 
       <section className="mt-12">
@@ -252,6 +294,10 @@ async function DashboardBody({
 
       <div className="mt-12">
         <SchedulesCard userId={viewer.id} initialSchedules={scheduleViews} />
+      </div>
+
+      <div className="mt-12">
+        <DebtsCard userId={viewer.id} initialDebts={debtViews} />
       </div>
 
       <div className="mt-12">

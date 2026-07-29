@@ -198,4 +198,74 @@ export class CueClient {
       dayOfMonth?: number;
     }>("/api/schedules/manage", { method: "POST", body: JSON.stringify(input) });
   }
+
+  getSummary(options: { period?: string; from?: string; to?: string } = {}) {
+    const query = new URLSearchParams();
+    if (options.period) query.set("period", options.period);
+    if (options.from) query.set("from", options.from);
+    if (options.to) query.set("to", options.to);
+    return this.request<{
+      periodLabel: string;
+      totalSent: string;
+      totalReceived: string;
+      transfers: number;
+      top: { label: string; amount: string; share: number }[];
+    }>(`/api/summary?${query.toString()}`);
+  }
+
+  getLimits() {
+    return this.request<{
+      limits: { daily: string | null; monthly: string | null };
+      usage: {
+        daily: { limit: string; remaining: string } | null;
+        monthly: { limit: string; remaining: string } | null;
+      };
+    }>("/api/limits");
+  }
+
+  setSpendingLimit(input: { daily?: number | null; monthly?: number | null }) {
+    return this.request<{ limits: { daily: string | null; monthly: string | null } }>("/api/limits", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  listDebts() {
+    return this.request<{
+      people: {
+        label: string;
+        email: string | null;
+        theyOwe: string;
+        iOwe: string;
+        net: number;
+        items: { id: string; amount: string; direction: "they_owe" | "i_owe"; note: string | null }[];
+      }[];
+    }>("/api/debts");
+  }
+
+  trackDebt(input: {
+    counterparty: string;
+    amount: number;
+    direction: "they_owe" | "i_owe";
+    note?: string;
+  }) {
+    return this.request<{ debtId: string; label: string; amount: string; direction: string }>("/api/debts", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  settleDebt(input: { debtId: string; pay?: boolean }) {
+    return this.request<{ status: string; amount?: string; label?: string }>("/api/debts/settle", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  remindDebt(input: { debtId: string }) {
+    return this.request<{ status: string; label: string; amount: string }>("/api/debts/remind", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
 }

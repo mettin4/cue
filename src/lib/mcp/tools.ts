@@ -13,8 +13,18 @@ import {
   saveContact as saveContactCore,
 } from "../cue/contacts";
 import { getDashboardData } from "../cue/dashboard";
+import {
+  getDebt,
+  listDebts,
+  sendDebtReminder,
+  settleBySend,
+  settleDebt,
+  trackDebt,
+} from "../cue/debts";
+import { getLimits, getUsage, loosensLimits, setLimits } from "../cue/limits";
 import { maskEmail, parseAmount, splitAmount, toAmountString } from "../cue/money";
 import { createRequest, listRequests } from "../cue/requests";
+import { getSpendingSummary, type SummaryPeriod } from "../cue/summary";
 import {
   createSchedule,
   deleteSchedule,
@@ -634,16 +644,311 @@ export async function cancelSend(
 export async function getBalance(user: UserRow): Promise<ToolOut> {
   try {
     const data = await getDashboardData(user);
-    return {
-      text: `Your balance is ${dollars(data.balance)}. In total you have sent ${dollars(
-        data.stats.totalSent,
-      )} and received ${dollars(data.stats.totalReceived)}, with ${data.stats.pendingCount} send${
-        data.stats.pendingCount === 1 ? "" : "s"
-      } waiting to be collected.`,
-    };
+    const usage = await getUsage(user.id);
+
+    let text = `Your balance is ${dollars(data.balance)}. In total you have sent ${dollars(
+      data.stats.totalSent,
+    )} and received ${dollars(data.stats.totalReceived)}, with ${data.stats.pendingCount} send${
+      data.stats.pendingCount === 1 ? "" : "s"
+    } waiting to be collected.`;
+
+    if (usage.daily) {
+      text += ` Your daily limit is ${dollars(usage.daily.limit)}, with ${dollars(
+        usage.daily.remaining,
+      )} left today.`;
+    }
+    if (usage.monthly) {
+      text += ` Your monthly limit is ${dollars(usage.monthly.limit)}, with ${dollars(
+        usage.monthly.remaining,
+      )} left this month.`;
+    }
+    if (!usage.daily && !usage.monthly) {
+      text += " No spending limits are set.";
+    }
+
+    return { text };
   } catch (error) {
     return { text: message(error), isError: true };
   }
+}
+
+export async function getSpendingSummaryTool(
+  user: UserRow,
+  args: { period?: SummaryPeriod; from?: string; to?: string },
+): Promise<ToolOut> {
+  try {
+    if (args.period === "custom" && (!args.from || !args.to)) {
+      return {
+        text: "For a custom period I need both a start and end date, each as YYYY-MM-DD.",
+        isError: true,
+      };
+    }
+
+    const s = await getSpendingSummary(user, {
+      period: args.period ?? "this_month",
+      from: args.from,
+      to: args.to,
+    });
+
+    if (s.transfers === 0) {
+      const received =
+        Number(s.totalReceived) > 0
+          ? ` You received ${dollars(s.totalReceived)}.`
+          : "";
+      return { text: `You have not sent anything ${s.periodLabel}.${received}` };
+    }
+
+    const plural = s.transfers === 1 ? "transfer" : "transfers";
+    let text = `${capitalize(s.periodLabel)} you sent ${dollars(s.totalSent)} across ${s.transfers} ${plural}`;
+
+    if (s.top.length > 0) {
+      const lead = s.top[0];
+      text += `, mostly to ${lead.label} who received ${dollars(lead.amount)} of it (${lead.share}%)`;
+      if (s.top.length > 1) {
+        const rest = s.top.slice(1).map((t) => `${t.label} ${dollars(t.amount)}`).join(", ");
+        text += `. Then ${rest}`;
+      }
+    }
+    text += ".";
+
+    if (Number(s.totalReceived) > 0) {
+      text += ` You received ${dollars(s.totalReceived)} over the same time.`;
+    }
+
+    return { text };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
+}
+
+export async function setSpendingLimit(
+  user: UserRow,
+  args: { daily?: number | null; monthly?: number | null; confirmationToken?: string },
+): Promise<ToolOut> {
+  if (args.confirmationToken) {
+    const payload = readConfirmation(args.confirmationToken);
+    if (!payload || payload.kind !== "set_limit" || payload.userId !== user.id) {
+      return {
+        text: "That confirmation is not valid or has expired. Ask me to prepare the limit change again.",
+        isError: true,
+      };
+    }
+    try {
+      const limits = await setLimits(user.id, { daily: payload.daily, monthly: payload.monthly });
+      return { text: describeLimits(limits) };
+    } catch (error) {
+      return { text: message(error), isError: true };
+    }
+  }
+
+  if (args.daily === undefined && args.monthly === undefined) {
+    return {
+      text: "Tell me a daily limit, a monthly limit, or both. Use 0 or none to remove a limit.",
+      isError: true,
+    };
+  }
+
+  // Normalise: a client may pass 0 to mean remove.
+  const next = {
+    daily: args.daily === undefined ? undefined : args.daily && args.daily > 0 ? args.daily : null,
+    monthly: args.monthly === undefined ? undefined : args.monthly && args.monthly > 0 ? args.monthly : null,
+  };
+
+  const current = await getLimits(user.id);
+
+  // Loosening a safety control gets the same friction as sending money.
+  if (loosensLimits(current, next)) {
+    const token = issueConfirmation({
+      kind: "set_limit",
+      userId: user.id,
+      daily: next.daily,
+      monthly: next.monthly,
+    });
+    return {
+      text:
+        `Preview, the limit has not changed yet. This loosens a safety control, so show it to the user and wait for their approval:\n` +
+        `${describeProposed(current, next)}\n` +
+        `Once the user approves, call set_spending_limit again with confirmationToken "${token}".`,
+    };
+  }
+
+  // Tightening or setting a first limit applies immediately.
+  try {
+    const limits = await setLimits(user.id, next);
+    return { text: describeLimits(limits) };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
+}
+
+export async function trackDebtTool(
+  user: UserRow,
+  args: { counterparty?: string; amount?: number; direction?: "they_owe" | "i_owe"; note?: string },
+): Promise<ToolOut> {
+  if (!args.counterparty || args.amount == null || !args.direction) {
+    return {
+      text: "To track a debt I need who it is with, the amount in dollars, and the direction: they owe you, or you owe them.",
+      isError: true,
+    };
+  }
+  try {
+    const { debt, label } = await trackDebt({
+      userId: user.id,
+      counterparty: args.counterparty,
+      amount: args.amount,
+      direction: args.direction,
+      note: args.note,
+    });
+    const amount = toAmountString(debt.amount);
+    const about = debt.note ? ` for ${debt.note}` : "";
+    return debt.direction === "they_owe"
+      ? { text: `Noted that ${label} owes you ${dollars(amount)}${about}.` }
+      : { text: `Noted that you owe ${label} ${dollars(amount)}${about}.` };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
+}
+
+export async function listDebtsTool(user: UserRow): Promise<ToolOut> {
+  try {
+    const people = await listDebts(user.id);
+    if (people.length === 0) return { text: "You have no open debts tracked." };
+
+    const lines = people.map((p) => {
+      const net =
+        p.net > 0
+          ? `${p.label} owes you ${dollars(p.net.toFixed(2))} net`
+          : p.net < 0
+            ? `you owe ${p.label} ${dollars(Math.abs(p.net).toFixed(2))} net`
+            : `you and ${p.label} are even`;
+      const items = p.items
+        .map((i) => {
+          const about = i.note ? ` (${i.note})` : "";
+          const dir = i.direction === "they_owe" ? "they owe" : "you owe";
+          return `${dir} ${dollars(i.amount)}${about} [${i.id}]`;
+        })
+        .join("; ");
+      return `- ${net}. ${items}`;
+    });
+
+    return { text: `Open debts:\n${lines.join("\n")}` };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
+}
+
+export async function settleDebtTool(
+  user: UserRow,
+  args: { debtId?: string; pay?: boolean; confirmationToken?: string },
+): Promise<ToolOut> {
+  if (args.confirmationToken) {
+    const payload = readConfirmation(args.confirmationToken);
+    if (!payload || payload.kind !== "settle_send" || payload.userId !== user.id) {
+      return {
+        text: "That confirmation is not valid or has expired. Ask me to prepare the payment again.",
+        isError: true,
+      };
+    }
+    try {
+      const done = await settleBySend(user, payload.debtId);
+      return {
+        text: `Sent ${dollars(done.amount)} to ${done.label} and marked the debt settled. They can collect it within about an hour.`,
+      };
+    } catch (error) {
+      return { text: message(error), isError: true };
+    }
+  }
+
+  if (!args.debtId) {
+    return { text: "Tell me which debt to settle using its reference from list_debts.", isError: true };
+  }
+
+  const debt = await getDebt(user.id, args.debtId);
+  if (!debt) return { text: "I could not find that debt for this account.", isError: true };
+  if (debt.status === "settled") return { text: "That debt is already settled." };
+
+  const amount = toAmountString(debt.amount);
+  const label = debt.counterparty_name ?? (debt.counterparty_email ? maskEmail(debt.counterparty_email) : "them");
+
+  // Settle by sending, only when you are the one who owes.
+  if (args.pay) {
+    if (debt.direction !== "i_owe") {
+      return {
+        text: "This is money owed to you, so there is nothing to send. Mark it settled without paying once they pay you.",
+        isError: true,
+      };
+    }
+    if (!debt.counterparty_email) {
+      return {
+        text: "This debt has no email on file, so it cannot be settled by sending. Save the person as a contact with their email, or settle it without sending.",
+        isError: true,
+      };
+    }
+    const token = issueConfirmation({
+      kind: "settle_send",
+      userId: user.id,
+      debtId: debt.id,
+      recipientEmail: debt.counterparty_email,
+      amount,
+    });
+    return {
+      text:
+        `Preview, no money has moved yet. Show this to the user and wait for their approval:\n` +
+        `Settle by sending ${dollars(amount)} to ${label}. They will have about an hour to collect it, and the debt is marked settled once it goes out.\n` +
+        `Once the user approves, call settle_debt again with confirmationToken "${token}".`,
+    };
+  }
+
+  // Plain settle: just mark it, no money moves.
+  const settled = await settleDebt(user.id, debt.id);
+  if (!settled) return { text: "That debt was already settled." };
+  return { text: `Marked the ${dollars(amount)} with ${label} as settled. No money was moved.` };
+}
+
+export async function remindDebtTool(
+  user: UserRow,
+  args: { debtId?: string },
+): Promise<ToolOut> {
+  if (!args.debtId) {
+    return { text: "Tell me which debt to send a reminder for, using its reference from list_debts.", isError: true };
+  }
+  try {
+    const { label, amount } = await sendDebtReminder(user, args.debtId);
+    return { text: `Sent a friendly reminder to ${label} about the ${dollars(amount)} they owe you.` };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function describeLimits(limits: { daily: string | null; monthly: string | null }): string {
+  const parts: string[] = [];
+  parts.push(limits.daily ? `a daily limit of ${dollars(limits.daily)}` : "no daily limit");
+  parts.push(limits.monthly ? `a monthly limit of ${dollars(limits.monthly)}` : "no monthly limit");
+  return `Done. You now have ${parts[0]} and ${parts[1]}.`;
+}
+
+function describeField(name: string, cur: string | null, proposed: number | null | undefined): string | null {
+  if (proposed === undefined) return null;
+  if (proposed === null) return `remove your ${name} limit${cur ? ` of ${dollars(cur)}` : ""}`;
+  const target = dollars(proposed.toFixed(2));
+  return cur
+    ? `raise your ${name} limit from ${dollars(cur)} to ${target}`
+    : `set your ${name} limit to ${target}`;
+}
+
+function describeProposed(
+  current: { daily: string | null; monthly: string | null },
+  next: { daily?: number | null; monthly?: number | null },
+): string {
+  const parts = [
+    describeField("daily", current.daily, next.daily),
+    describeField("monthly", current.monthly, next.monthly),
+  ].filter(Boolean);
+  return `This will ${parts.join(" and ")}.`;
 }
 
 export async function getHistory(

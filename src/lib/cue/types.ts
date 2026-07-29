@@ -27,6 +27,25 @@ export type UserRow = {
   circle_wallet_id: string | null;
   circle_wallet_address: string | null;
   created_at: string | null;
+  daily_limit_usdc?: string | number | null;
+  monthly_limit_usdc?: string | number | null;
+};
+
+export type DebtDirection = "they_owe" | "i_owe";
+export type DebtStatus = "open" | "settled";
+
+export type DebtRow = {
+  id: string;
+  account_id: string;
+  counterparty_name: string | null;
+  counterparty_email: string | null;
+  amount: string | number;
+  direction: DebtDirection;
+  note: string | null;
+  status: DebtStatus;
+  created_at: string | null;
+  settled_at: string | null;
+  last_reminded_at: string | null;
 };
 
 export type RequestStatus = "pending" | "paid" | "cancelled" | "expired";
@@ -71,4 +90,5 @@ export type EmailType =
   | "claim_confirmation"
   | "send_cancelled"
   | "money_request"
-  | "schedule_failed";
+  | "schedule_failed"
+  | "debt_reminder";

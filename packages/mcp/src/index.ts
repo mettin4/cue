@@ -10,14 +10,20 @@ import {
   checkClaimStatus,
   getBalance,
   getHistory,
+  getSpendingSummary,
   listContacts,
+  listDebts,
   manageSchedules,
+  remindDebt,
   requestMoney,
   resendClaimLink,
   saveContact,
   schedulePayment,
   sendMoney,
+  setSpendingLimit,
+  settleDebt,
   splitMoney,
+  trackDebt,
 } from "./tools.js";
 
 // Logs must go to stderr. stdout is the protocol channel.
@@ -247,6 +253,97 @@ server.registerTool(
     },
   },
   async (args) => result(await resendClaimLink(ctx, args)),
+);
+
+server.registerTool(
+  "get_spending_summary",
+  {
+    title: "Spending summary",
+    description:
+      "Summarise money sent and received over a period, with the top recipients. Optional period: 'this_week', 'this_month' (the default), 'last_month', or 'custom' with from and to dates as YYYY-MM-DD.",
+    inputSchema: {
+      period: z.enum(["this_week", "this_month", "last_month", "custom"]).optional(),
+      from: z.string().optional().describe("Start date YYYY-MM-DD, for a custom period."),
+      to: z.string().optional().describe("End date YYYY-MM-DD, for a custom period."),
+    },
+  },
+  async (args) => result(await getSpendingSummary(ctx, args)),
+);
+
+server.registerTool(
+  "set_spending_limit",
+  {
+    title: "Set a spending limit",
+    description:
+      "Set a daily limit, a monthly limit, or both, in dollars, as a safety control. Pass 0 to remove a limit. Setting a first limit or lowering one takes effect immediately. Raising or removing a limit loosens the control, so it returns a preview and a confirmationToken and only applies after a second call with that token.",
+    inputSchema: {
+      daily: z.number().nonnegative().optional().describe("Daily limit in dollars, or 0 to remove it."),
+      monthly: z.number().nonnegative().optional().describe("Monthly limit in dollars, or 0 to remove it."),
+      confirmationToken: z
+        .string()
+        .optional()
+        .describe("Token from a preview. Only set this to confirm a limit that loosens the control."),
+    },
+  },
+  async (args) => result(await setSpendingLimit(ctx, args)),
+);
+
+server.registerTool(
+  "track_debt",
+  {
+    title: "Track a debt",
+    description:
+      "Record money owed between you and someone else, without moving anything. Give the counterparty by email or saved contact name, the amount, and the direction: 'they_owe' if they owe you, or 'i_owe' if you owe them. An optional note says what it is for.",
+    inputSchema: {
+      counterparty: z.string().describe("The other person, by email or saved contact name."),
+      amount: z.number().positive().describe("Amount in dollars."),
+      direction: z.enum(["they_owe", "i_owe"]),
+      note: z.string().optional().describe("What the debt is for, optional."),
+    },
+  },
+  async (args) => result(await trackDebt(ctx, args)),
+);
+
+server.registerTool(
+  "list_debts",
+  {
+    title: "List debts",
+    description:
+      "List open debts in both directions, grouped by person, with the net position for each and a reference for every entry.",
+    inputSchema: {},
+  },
+  async () => result(await listDebts(ctx)),
+);
+
+server.registerTool(
+  "settle_debt",
+  {
+    title: "Settle a debt",
+    description:
+      "Mark a debt settled. Takes the debt reference from list_debts. By default it just marks it settled and moves no money. If you owe the person, pass pay set to true to settle by actually sending the money: that returns a normal send preview and confirmationToken, and only sends after a second call with that token. Money is never sent automatically.",
+    inputSchema: {
+      debtId: z.string().optional().describe("The debt reference from list_debts."),
+      pay: z.boolean().optional().describe("Set true to settle a debt you owe by sending the money."),
+      confirmationToken: z
+        .string()
+        .optional()
+        .describe("Token from a settle by sending preview. Only set this to confirm the payment."),
+    },
+  },
+  async (args) => result(await settleDebt(ctx, args)),
+);
+
+server.registerTool(
+  "remind_debt",
+  {
+    title: "Remind about a debt",
+    description:
+      "Email a short, friendly reminder to someone who owes you, for a debt from list_debts. Only works for money owed to you, only when an email is on file, and at most once per debt per day.",
+    inputSchema: {
+      debtId: z.string().describe("The debt reference from list_debts."),
+    },
+  },
+  async (args) => result(await remindDebt(ctx, args)),
 );
 
 async function main() {

@@ -20,6 +20,7 @@ const MIGRATIONS_DIR = join(process.cwd(), "supabase", "migrations");
 const EXPECTED_TABLES = [
   "connect_tokens",
   "contacts",
+  "debts",
   "email_logs",
   "requests",
   "scheduled_payments",

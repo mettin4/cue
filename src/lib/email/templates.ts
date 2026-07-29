@@ -191,6 +191,26 @@ export function scheduleFailedEmail(params: {
   };
 }
 
+export function debtReminderEmail(params: {
+  amount: string;
+  fromLabel: string;
+  note?: string | null;
+  markUrl?: string;
+}): { subject: string; html: string } {
+  const about = params.note ? ` for ${params.note}` : "";
+  return {
+    subject: `A friendly reminder about ${params.amount} dollars`,
+    html: layout({
+      markUrl: params.markUrl,
+      heading: "Just a friendly reminder",
+      bodyHtml:
+        `This is a friendly note that there is ${mintAmount(`${params.amount} dollars`)}${about} ` +
+        `outstanding between you and ${params.fromLabel}. No rush at all, whenever works for you.`,
+      footnote: "You are getting this because they tracked it in Cue. You can settle up any way you like.",
+    }),
+  };
+}
+
 export function sendCancelledEmail(params: {
   amount: string;
   senderLabel: string;

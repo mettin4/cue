@@ -13,6 +13,7 @@ import {
 } from "../config";
 import { claimInviteEmail } from "../email/templates";
 import { sendAndLog } from "../email/send";
+import { assertWithinLimits } from "./limits";
 import { getSupabaseAdmin } from "../supabase/server";
 import { addAmounts, maskEmail, normaliseEmail, parseAmount, toAmountString } from "./money";
 import type { EmailResult } from "../email/send";
@@ -97,6 +98,11 @@ export async function createSend(params: {
       "Money can only be sent to someone else. Please use a different email address, not your own.",
     );
   }
+
+  // Safety control: refuse anything that would breach this account's daily or
+  // monthly spending limit. Enforced here so every path is covered, including
+  // the API, split and scheduled payments.
+  await assertWithinLimits(sender.id, amount);
 
   await assertTreasuryCanCover(amount);
 

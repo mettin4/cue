@@ -48,6 +48,17 @@ type PendingScheduleDelete = {
   amount: string;
   recipient: string;
 };
+type PendingSetLimit = {
+  kind: "set_limit";
+  daily: number | null | undefined;
+  monthly: number | null | undefined;
+};
+type PendingSettleSend = {
+  kind: "settle_send";
+  debtId: string;
+  amount: string;
+  label: string;
+};
 
 export type Ctx = {
   client: CueClient;
@@ -59,6 +70,8 @@ export type Ctx = {
     | PendingSplit
     | PendingSchedule
     | PendingScheduleDelete
+    | PendingSetLimit
+    | PendingSettleSend
   >;
 };
 
@@ -517,6 +530,231 @@ export async function manageSchedules(
   }
 }
 
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+export async function getSpendingSummary(
+  ctx: Ctx,
+  args: { period?: "this_week" | "this_month" | "last_month" | "custom"; from?: string; to?: string },
+): Promise<ToolResult> {
+  if (args.period === "custom" && (!args.from || !args.to)) {
+    return {
+      text: "For a custom period I need both a start and end date, each as YYYY-MM-DD.",
+      isError: true,
+    };
+  }
+  try {
+    const s = await ctx.client.getSummary({ period: args.period ?? "this_month", from: args.from, to: args.to });
+    if (s.transfers === 0) {
+      const received = Number(s.totalReceived) > 0 ? ` You received ${dollars(s.totalReceived)}.` : "";
+      return { text: `You have not sent anything ${s.periodLabel}.${received}` };
+    }
+    const plural = s.transfers === 1 ? "transfer" : "transfers";
+    let text = `${capitalize(s.periodLabel)} you sent ${dollars(s.totalSent)} across ${s.transfers} ${plural}`;
+    if (s.top.length > 0) {
+      const lead = s.top[0];
+      text += `, mostly to ${lead.label} who received ${dollars(lead.amount)} of it (${lead.share}%)`;
+      if (s.top.length > 1) {
+        text += `. Then ${s.top.slice(1).map((t) => `${t.label} ${dollars(t.amount)}`).join(", ")}`;
+      }
+    }
+    text += ".";
+    if (Number(s.totalReceived) > 0) text += ` You received ${dollars(s.totalReceived)} over the same time.`;
+    return { text };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+function loosens(cur: string | null, proposed: number | null | undefined): boolean {
+  if (proposed === undefined) return false;
+  if (proposed === null) return cur !== null;
+  if (cur === null) return false;
+  return proposed > Number(cur);
+}
+
+function describeLimits(limits: { daily: string | null; monthly: string | null }): string {
+  const daily = limits.daily ? `a daily limit of ${dollars(limits.daily)}` : "no daily limit";
+  const monthly = limits.monthly ? `a monthly limit of ${dollars(limits.monthly)}` : "no monthly limit";
+  return `Done. You now have ${daily} and ${monthly}.`;
+}
+
+export async function setSpendingLimit(
+  ctx: Ctx,
+  args: { daily?: number | null; monthly?: number | null; confirmationToken?: string },
+): Promise<ToolResult> {
+  if (args.confirmationToken) {
+    const pending = ctx.pending.get(args.confirmationToken);
+    if (!pending || pending.kind !== "set_limit") {
+      return {
+        text: "That confirmation code is not valid or has expired. Ask me to prepare the limit change again.",
+        isError: true,
+      };
+    }
+    ctx.pending.delete(args.confirmationToken);
+    try {
+      const { limits } = await ctx.client.setSpendingLimit({ daily: pending.daily, monthly: pending.monthly });
+      return { text: describeLimits(limits) };
+    } catch (error) {
+      return fail(error);
+    }
+  }
+
+  if (args.daily === undefined && args.monthly === undefined) {
+    return {
+      text: "Tell me a daily limit, a monthly limit, or both. Use 0 or none to remove a limit.",
+      isError: true,
+    };
+  }
+
+  const next = {
+    daily: args.daily === undefined ? undefined : args.daily && args.daily > 0 ? args.daily : null,
+    monthly: args.monthly === undefined ? undefined : args.monthly && args.monthly > 0 ? args.monthly : null,
+  };
+
+  try {
+    const { limits: current } = await ctx.client.getLimits();
+    if (loosens(current.daily, next.daily) || loosens(current.monthly, next.monthly)) {
+      const code = token();
+      ctx.pending.set(code, { kind: "set_limit", daily: next.daily, monthly: next.monthly });
+      return {
+        text:
+          `Preview, the limit has not changed yet. This loosens a safety control, so show it to the user and wait for their approval.\n` +
+          `Once the user approves, call set_spending_limit again with confirmationToken "${code}".`,
+      };
+    }
+    const { limits } = await ctx.client.setSpendingLimit(next);
+    return { text: describeLimits(limits) };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function trackDebt(
+  ctx: Ctx,
+  args: { counterparty?: string; amount?: number; direction?: "they_owe" | "i_owe"; note?: string },
+): Promise<ToolResult> {
+  if (!args.counterparty || args.amount == null || !args.direction) {
+    return {
+      text: "To track a debt I need who it is with, the amount in dollars, and the direction: they owe you, or you owe them.",
+      isError: true,
+    };
+  }
+  try {
+    const debt = await ctx.client.trackDebt({
+      counterparty: args.counterparty,
+      amount: args.amount,
+      direction: args.direction,
+      note: args.note,
+    });
+    const about = args.note ? ` for ${args.note}` : "";
+    return debt.direction === "they_owe"
+      ? { text: `Noted that ${debt.label} owes you ${dollars(debt.amount)}${about}.` }
+      : { text: `Noted that you owe ${debt.label} ${dollars(debt.amount)}${about}.` };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function listDebts(ctx: Ctx): Promise<ToolResult> {
+  try {
+    const { people } = await ctx.client.listDebts();
+    if (people.length === 0) return { text: "You have no open debts tracked." };
+    const lines = people.map((p) => {
+      const net =
+        p.net > 0
+          ? `${p.label} owes you ${dollars(p.net.toFixed(2))} net`
+          : p.net < 0
+            ? `you owe ${p.label} ${dollars(Math.abs(p.net).toFixed(2))} net`
+            : `you and ${p.label} are even`;
+      const items = p.items
+        .map((i) => {
+          const about = i.note ? ` (${i.note})` : "";
+          const dir = i.direction === "they_owe" ? "they owe" : "you owe";
+          return `${dir} ${dollars(i.amount)}${about} [${i.id}]`;
+        })
+        .join("; ");
+      return `- ${net}. ${items}`;
+    });
+    return { text: `Open debts:\n${lines.join("\n")}` };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function settleDebt(
+  ctx: Ctx,
+  args: { debtId?: string; pay?: boolean; confirmationToken?: string },
+): Promise<ToolResult> {
+  if (args.confirmationToken) {
+    const pending = ctx.pending.get(args.confirmationToken);
+    if (!pending || pending.kind !== "settle_send") {
+      return {
+        text: "That confirmation code is not valid or has expired. Ask me to prepare the payment again.",
+        isError: true,
+      };
+    }
+    ctx.pending.delete(args.confirmationToken);
+    try {
+      const done = await ctx.client.settleDebt({ debtId: pending.debtId, pay: true });
+      return {
+        text: `Sent ${dollars(done.amount ?? pending.amount)} to ${done.label ?? pending.label} and marked the debt settled. They can collect it within about an hour.`,
+      };
+    } catch (error) {
+      return fail(error);
+    }
+  }
+
+  if (!args.debtId) {
+    return { text: "Tell me which debt to settle using its reference from list_debts.", isError: true };
+  }
+
+  try {
+    if (args.pay) {
+      // Find the debt so the preview can name it.
+      const { people } = await ctx.client.listDebts();
+      let found: { amount: string; label: string; direction: string } | null = null;
+      for (const p of people) {
+        const item = p.items.find((i) => i.id === args.debtId);
+        if (item) found = { amount: item.amount, label: p.label, direction: item.direction };
+      }
+      if (!found) return { text: "I could not find that open debt for this account.", isError: true };
+      if (found.direction !== "i_owe") {
+        return {
+          text: "This is money owed to you, so there is nothing to send. Mark it settled without paying once they pay you.",
+          isError: true,
+        };
+      }
+      const code = token();
+      ctx.pending.set(code, { kind: "settle_send", debtId: args.debtId, amount: found.amount, label: found.label });
+      return {
+        text:
+          `Preview, no money has moved yet. Show this to the user and wait for their approval:\n` +
+          `Settle by sending ${dollars(found.amount)} to ${found.label}. They will have about an hour to collect it, and the debt is marked settled once it goes out.\n` +
+          `Once the user approves, call settle_debt again with confirmationToken "${code}".`,
+      };
+    }
+
+    const done = await ctx.client.settleDebt({ debtId: args.debtId });
+    return { text: `Marked the ${dollars(done.amount ?? "0.00")} debt as settled. No money was moved.` };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function remindDebt(ctx: Ctx, args: { debtId?: string }): Promise<ToolResult> {
+  if (!args.debtId) {
+    return { text: "Tell me which debt to send a reminder for, using its reference from list_debts.", isError: true };
+  }
+  try {
+    const done = await ctx.client.remindDebt({ debtId: args.debtId });
+    return { text: `Sent a friendly reminder to ${done.label} about the ${dollars(done.amount)} they owe you.` };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 export async function cancelSend(
   ctx: Ctx,
   args: { transactionId?: string; recipientEmail?: string; confirmationToken?: string },
@@ -595,13 +833,26 @@ export async function cancelSend(
 export async function getBalance(ctx: Ctx): Promise<ToolResult> {
   try {
     const data = await ctx.client.getBalance();
-    return {
-      text: `Your balance is ${dollars(data.balance)}. In total you have sent ${dollars(
-        data.totalSent,
-      )} and received ${dollars(data.totalReceived)}, with ${data.pendingCount} send${
-        data.pendingCount === 1 ? "" : "s"
-      } waiting to be collected.`,
-    };
+    let text = `Your balance is ${dollars(data.balance)}. In total you have sent ${dollars(
+      data.totalSent,
+    )} and received ${dollars(data.totalReceived)}, with ${data.pendingCount} send${
+      data.pendingCount === 1 ? "" : "s"
+    } waiting to be collected.`;
+
+    try {
+      const { usage } = await ctx.client.getLimits();
+      if (usage.daily) {
+        text += ` Your daily limit is ${dollars(usage.daily.limit)}, with ${dollars(usage.daily.remaining)} left today.`;
+      }
+      if (usage.monthly) {
+        text += ` Your monthly limit is ${dollars(usage.monthly.limit)}, with ${dollars(usage.monthly.remaining)} left this month.`;
+      }
+      if (!usage.daily && !usage.monthly) text += " No spending limits are set.";
+    } catch {
+      // A limits lookup problem should not fail the balance read.
+    }
+
+    return { text };
   } catch (error) {
     return fail(error);
   }

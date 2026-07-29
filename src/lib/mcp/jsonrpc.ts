@@ -6,14 +6,20 @@ import {
   checkClaimStatus,
   getBalance,
   getHistory,
+  getSpendingSummaryTool,
   listContacts,
+  listDebtsTool,
   manageSchedules,
+  remindDebtTool,
   requestMoney,
   resendClaimLink,
   saveContact,
   schedulePayment,
   sendMoney,
+  setSpendingLimit,
+  settleDebtTool,
   splitMoney,
+  trackDebtTool,
   type ToolOut,
 } from "./tools";
 
@@ -160,8 +166,84 @@ const TOOLS = [
   {
     name: "get_balance",
     description:
-      "Get the current account balance in dollars, plus totals sent and received and how many sends are waiting to be collected.",
+      "Get the current account balance in dollars, plus totals sent and received, how many sends are waiting to be collected, and any daily or monthly spending limit with how much is left.",
     inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_spending_summary",
+    description:
+      "Summarise money sent and received over a period, with the top recipients. Optional period: 'this_week', 'this_month' (the default), 'last_month', or 'custom' with from and to dates as YYYY-MM-DD.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        period: { type: "string", enum: ["this_week", "this_month", "last_month", "custom"] },
+        from: { type: "string", description: "Start date YYYY-MM-DD, for a custom period." },
+        to: { type: "string", description: "End date YYYY-MM-DD, for a custom period." },
+      },
+    },
+  },
+  {
+    name: "set_spending_limit",
+    description:
+      "Set a daily limit, a monthly limit, or both, in dollars, as a safety control on how much can be sent. Pass 0 to remove a limit. Setting a first limit or lowering one takes effect immediately. Raising or removing a limit loosens the control, so it returns a preview and a confirmationToken and only applies after a second call with that token.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        daily: { type: "number", description: "Daily limit in dollars, or 0 to remove it." },
+        monthly: { type: "number", description: "Monthly limit in dollars, or 0 to remove it." },
+        confirmationToken: {
+          type: "string",
+          description: "Token from a preview. Only set this to confirm a limit that loosens the control.",
+        },
+      },
+    },
+  },
+  {
+    name: "track_debt",
+    description:
+      "Record money owed between you and someone else, without moving anything. Give the counterparty by email or saved contact name, the amount, and the direction: 'they_owe' if they owe you, or 'i_owe' if you owe them. An optional note says what it is for.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        counterparty: { type: "string", description: "The other person, by email or saved contact name." },
+        amount: { type: "number", description: "Amount in dollars." },
+        direction: { type: "string", enum: ["they_owe", "i_owe"] },
+        note: { type: "string", description: "What the debt is for, optional." },
+      },
+      required: ["counterparty", "amount", "direction"],
+    },
+  },
+  {
+    name: "list_debts",
+    description:
+      "List open debts in both directions, grouped by person, with the net position for each and a reference for every entry.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "settle_debt",
+    description:
+      "Mark a debt settled. Takes the debt reference from list_debts. By default it just marks it settled and moves no money. If you owe the person, pass pay set to true to settle by actually sending the money: that returns a normal send preview and confirmationToken, and only sends after a second call with that token. Money is never sent automatically.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        debtId: { type: "string", description: "The debt reference from list_debts." },
+        pay: { type: "boolean", description: "Set true to settle a debt you owe by sending the money." },
+        confirmationToken: {
+          type: "string",
+          description: "Token from a settle by sending preview. Only set this to confirm the payment.",
+        },
+      },
+    },
+  },
+  {
+    name: "remind_debt",
+    description:
+      "Email a short, friendly reminder to someone who owes you, for a debt from list_debts. Only works for money owed to you, only when an email is on file, and at most once per debt per day.",
+    inputSchema: {
+      type: "object",
+      properties: { debtId: { type: "string", description: "The debt reference from list_debts." } },
+      required: ["debtId"],
+    },
   },
   {
     name: "get_history",
@@ -233,6 +315,18 @@ async function callTool(user: UserRow, name: string, args: Record<string, unknow
       return listContacts(user);
     case "get_balance":
       return getBalance(user);
+    case "get_spending_summary":
+      return getSpendingSummaryTool(user, args as { period?: "this_week" | "this_month" | "last_month" | "custom"; from?: string; to?: string });
+    case "set_spending_limit":
+      return setSpendingLimit(user, args as { daily?: number | null; monthly?: number | null; confirmationToken?: string });
+    case "track_debt":
+      return trackDebtTool(user, args as { counterparty?: string; amount?: number; direction?: "they_owe" | "i_owe"; note?: string });
+    case "list_debts":
+      return listDebtsTool(user);
+    case "settle_debt":
+      return settleDebtTool(user, args as { debtId?: string; pay?: boolean; confirmationToken?: string });
+    case "remind_debt":
+      return remindDebtTool(user, args as { debtId?: string });
     case "get_history":
       return getHistory(user, args);
     case "check_claim_status":
