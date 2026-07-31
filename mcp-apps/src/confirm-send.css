@@ -1,0 +1,274 @@
+/*
+  Cue confirmation card. Same palette and type as the site: near black surface,
+  mint accent, Space Grotesk for the amount and the wordmark, a system sans for
+  everything else. Dark only, like the rest of Cue.
+*/
+
+:root {
+  --background: #0a0a0b;
+  --card: #121215;
+  --elevated: #1a1a1f;
+  --foreground: #f4f4f5;
+  --muted-foreground: #85858f;
+  --subtle-foreground: #5f5f68;
+  --primary: #38d389;
+  --primary-hover: #45e096;
+  --primary-foreground: #04120a;
+  --border: #232327;
+  --border-strong: #34343c;
+  --destructive: #f0563f;
+
+  --display: "CueDisplay", ui-sans-serif, system-ui, sans-serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+  padding: 18px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 24px 70px -32px rgba(0, 0, 0, 0.9);
+}
+
+/* Brand, quiet, one per card. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--foreground);
+}
+.brand svg {
+  width: 21px;
+  height: 20px;
+  display: block;
+}
+.brand-word {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+/* Tiny tracked out labels, exactly like the dashboard section headers. */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--subtle-foreground);
+}
+
+.amount-block {
+  margin-top: 20px;
+}
+.amount-block .eyebrow {
+  margin-bottom: 8px;
+}
+
+/* The amount is the anchor: large, tight, mint, with a soft glow like the
+   claim page. */
+.amount {
+  font-family: var(--display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.75rem, 13vw, 3.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--primary);
+  text-shadow: 0 0 44px rgba(56, 211, 137, 0.3);
+}
+.amount.muted {
+  color: var(--muted-foreground);
+  text-shadow: none;
+}
+
+.details {
+  margin: 20px 0 0;
+  padding: 0;
+}
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-top: 1px solid var(--border);
+}
+.row dt {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.row dd {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 13px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.row dd.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+.btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease,
+    opacity 0.15s ease;
+}
+.btn:active {
+  transform: scale(0.985);
+}
+.btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+  transform: none;
+}
+.btn.primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 1px solid var(--primary);
+  box-shadow: 0 10px 34px -14px rgba(56, 211, 137, 0.9);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+}
+.btn.ghost:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--elevated);
+  color: var(--foreground);
+}
+
+.foot {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--subtle-foreground);
+}
+
+/* Result states. A small round badge, mint for success, muted for the quiet
+   ones. Cancelling is never treated as an error, so it stays neutral. */
+.badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.badge svg {
+  width: 22px;
+  height: 22px;
+}
+.badge.ok {
+  background: rgba(56, 211, 137, 0.12);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px rgba(56, 211, 137, 0.25);
+}
+.badge.neutral {
+  background: var(--elevated);
+  color: var(--muted-foreground);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.result-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.result-body {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  border: 2px solid rgba(4, 18, 10, 0.35);
+  border-top-color: var(--primary-foreground);
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 8px;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Skeleton shown for the brief moment before the preview data arrives. */
+.skeleton .bar {
+  background: var(--elevated);
+  border-radius: 8px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .skeleton .bar {
+    animation: none;
+  }
+}

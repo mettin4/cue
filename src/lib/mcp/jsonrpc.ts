@@ -22,10 +22,24 @@ import {
   trackDebtTool,
   type ToolOut,
 } from "./tools";
+import { CONFIRM_SEND_HTML } from "./ui/confirm-send.generated";
 
 const SERVER_VERSION = "0.1.0";
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const DEFAULT_PROTOCOL = "2025-06-18";
+
+/**
+ * MCP Apps UI resources. A tool references one by uri in its _meta.ui, and the
+ * host fetches it with resources/read and renders it in a sandboxed iframe. The
+ * card is a static template: the amount, recipient and confirmation token come
+ * from the tool result, never baked into the HTML.
+ */
+const CONFIRM_SEND_URI = "ui://cue/confirm-send.html";
+const UI_MIME = "text/html;profile=mcp-app";
+
+const UI_RESOURCES: Record<string, { name: string; html: string }> = {
+  [CONFIRM_SEND_URI]: { name: "Send confirmation", html: CONFIRM_SEND_HTML },
+};
 
 /**
  * Tool definitions advertised on tools/list. Same six tools and the same two
@@ -50,6 +64,7 @@ const TOOLS = [
         },
       },
     },
+    _meta: { ui: { resourceUri: CONFIRM_SEND_URI } },
   },
   {
     name: "cancel_send",
@@ -292,7 +307,18 @@ type RpcResponse =
   | { jsonrpc: "2.0"; id: string | number | null; error: { code: number; message: string } };
 
 function toolResult(out: ToolOut) {
-  return { content: [{ type: "text", text: out.text }], isError: out.isError ?? false };
+  const result: {
+    content: { type: "text"; text: string }[];
+    isError: boolean;
+    structuredContent?: Record<string, unknown>;
+  } = {
+    content: [{ type: "text", text: out.text }],
+    isError: out.isError ?? false,
+  };
+  // Structured data rides alongside the text, for an MCP Apps view. The text
+  // stays the fallback for clients that do not render the card.
+  if (out.structuredContent) result.structuredContent = out.structuredContent;
+  return result;
 }
 
 async function callTool(user: UserRow, name: string, args: Record<string, unknown>) {
@@ -364,7 +390,11 @@ export async function handleMessage(
         id,
         result: {
           protocolVersion,
-          capabilities: { tools: { listChanged: false } },
+          capabilities: {
+            tools: { listChanged: false },
+            // The UI cards for MCP Apps are served as read only resources.
+            resources: { listChanged: false },
+          },
           serverInfo: { name: "cue", version: SERVER_VERSION },
         },
       };
@@ -375,6 +405,32 @@ export async function handleMessage(
 
     case "tools/list":
       return { jsonrpc: "2.0", id, result: { tools: TOOLS } };
+
+    case "resources/list":
+      return {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          resources: Object.entries(UI_RESOURCES).map(([uri, r]) => ({
+            uri,
+            name: r.name,
+            mimeType: UI_MIME,
+          })),
+        },
+      };
+
+    case "resources/read": {
+      const uri = message.params?.uri as string;
+      const resource = UI_RESOURCES[uri];
+      if (!resource) {
+        return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown resource: ${uri}` } };
+      }
+      return {
+        jsonrpc: "2.0",
+        id,
+        result: { contents: [{ uri, mimeType: UI_MIME, text: resource.html }] },
+      };
+    }
 
     case "tools/call": {
       const name = message.params?.name as string;

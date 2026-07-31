@@ -6,7 +6,7 @@ import {
   resendClaimEmail,
 } from "../cue/actions";
 import { cancelSend as cancelSendCore } from "../cue/cancel";
-import { maxSendUsdc } from "../config";
+import { DEFAULT_CANCEL_WINDOW_SECONDS, maxSendUsdc } from "../config";
 import {
   listContacts as listContactsCore,
   resolveRecipient,
@@ -37,7 +37,7 @@ import {
 } from "../cue/schedules";
 import { createSend } from "../cue/send";
 import type { UserRow } from "../cue/types";
-import { issueConfirmation, readConfirmation } from "./confirm";
+import { claimConfirmation, issueConfirmation, readConfirmation } from "./confirm";
 import {
   dollars,
   humanizeSeconds,
@@ -45,7 +45,28 @@ import {
   statusPhrase,
 } from "./format";
 
-export type ToolOut = { text: string; isError?: boolean };
+export type ToolOut = {
+  text: string;
+  isError?: boolean;
+  /** Optional structured data for an MCP Apps view, alongside the text fallback. */
+  structuredContent?: Record<string, unknown>;
+};
+
+/**
+ * Claims a confirmation token's jti so its action runs at most once. Returns an
+ * error result when the token was already used, which the caller returns as is.
+ * Call this only after the token's kind and account have been verified, so a
+ * mismatched token never burns a jti.
+ */
+async function claimOnce(jti: string): Promise<ToolOut | null> {
+  const fresh = await claimConfirmation(jti);
+  return fresh
+    ? null
+    : {
+        text: "That confirmation was already used, so nothing ran a second time. Ask me to prepare a new one if you meant to do it again.",
+        isError: true,
+      };
+}
 
 function secondsUntil(deadline: Date): number {
   return Math.max(0, Math.ceil((deadline.getTime() - Date.now()) / 1000));
@@ -104,6 +125,8 @@ export async function sendMoney(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
     try {
       const result = await createSend({
         senderUserId: user.id,
@@ -113,6 +136,12 @@ export async function sendMoney(
       const unlock = humanizeSeconds(secondsUntil(result.cancelDeadline));
       return {
         text: `Sent ${dollars(payload.amount)} to ${payload.recipientEmail}. They can collect it in ${unlock}, and you can call it back until then.`,
+        structuredContent: {
+          kind: "send_success",
+          amount: payload.amount,
+          recipient: payload.recipientEmail,
+          unlockLabel: unlock,
+        },
       };
     } catch (error) {
       return { text: message(error), isError: true };
@@ -143,11 +172,33 @@ export async function sendMoney(
     amount,
   });
 
+  // Best effort balance after this send, for the confirmation card. A send draws
+  // from the shared treasury on testnet, so this is the account balance minus the
+  // amount rather than a debit, shown as a plain heads up.
+  let balanceAfter: string | undefined;
+  try {
+    const data = await getDashboardData(user);
+    const after = Math.round(Number(data.balance) * 100) - Math.round(Number(amount) * 100);
+    balanceAfter = (Math.max(0, after) / 100).toFixed(2);
+  } catch {
+    // Leave it out rather than show a wrong number.
+  }
+
+  const unlockLabel = humanizeSeconds(DEFAULT_CANCEL_WINDOW_SECONDS);
+
   return {
     text:
       `Preview, no money has moved yet. Show this to the user and wait for their approval:\n` +
       `Send ${dollars(amount)} to ${resolved.label}. They will have about an hour to collect it, and you can call it back during that time.\n` +
       `Once the user approves, call send_money again with confirmationToken "${token}".`,
+    structuredContent: {
+      kind: "send_preview",
+      amount,
+      recipient: resolved.label,
+      unlockLabel,
+      balanceAfter,
+      confirmationToken: token,
+    },
   };
 }
 
@@ -163,6 +214,8 @@ export async function requestMoney(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
     try {
       await createRequest({
         requesterUserId: user.id,
@@ -221,6 +274,8 @@ export async function splitMoney(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
 
     // Check the whole total against the balance before starting, so a split that
     // cannot complete does not send some shares and then stop.
@@ -407,6 +462,8 @@ export async function schedulePayment(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
     try {
       const result = await createSchedule({
         senderUserId: user.id,
@@ -480,6 +537,8 @@ export async function manageSchedules(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
     const removed = await deleteSchedule(user.id, payload.scheduleId);
     if (!removed) {
       return { text: "That schedule was already removed, so there was nothing to delete." };
@@ -574,6 +633,8 @@ export async function cancelSend(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
     try {
       await cancelSendCore({
         transactionId: payload.transactionId,
@@ -733,6 +794,8 @@ export async function setSpendingLimit(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
     try {
       const limits = await setLimits(user.id, { daily: payload.daily, monthly: payload.monthly });
       return { text: describeLimits(limits) };
@@ -849,6 +912,8 @@ export async function settleDebtTool(
         isError: true,
       };
     }
+    const used = await claimOnce(payload.jti);
+    if (used) return used;
     try {
       const done = await settleBySend(user, payload.debtId);
       return {

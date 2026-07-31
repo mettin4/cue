@@ -25,6 +25,7 @@ const EXPECTED_TABLES = [
   "requests",
   "scheduled_payments",
   "transactions",
+  "used_confirmations",
   "users",
 ];
 

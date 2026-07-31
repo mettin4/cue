@@ -18,6 +18,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Built single-file card, a large inline string. Linted at its source in mcp-apps.
+      "src/lib/mcp/ui/confirm-send.generated.ts",
     ],
   },
 ];
