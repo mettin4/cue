@@ -2,7 +2,7 @@ import "server-only";
 
 import { Resend } from "resend";
 
-import { EMAIL_FROM, resendApiKey } from "../config";
+import { EMAIL_FROM, EMAIL_REPLY_TO, resendApiKey } from "../config";
 import { getSupabaseAdmin } from "../supabase/server";
 import type { EmailType } from "../cue/types";
 
@@ -41,6 +41,7 @@ export async function sendAndLog(params: {
   try {
     const { data, error } = await getResend().emails.send({
       from: EMAIL_FROM,
+      replyTo: EMAIL_REPLY_TO,
       to: params.to,
       subject: params.subject,
       html: params.html,

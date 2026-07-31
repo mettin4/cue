@@ -77,10 +77,12 @@ export function brandMarkUrl(): string {
 }
 
 /**
- * Sender address for outbound email. Resend's shared onboarding domain works
- * without domain verification but can only deliver to the Resend account owner.
+ * Sender and reply-to for outbound email, on our verified cueworks.net domain,
+ * so mail delivers to anyone rather than only the Resend account owner. "hello"
+ * reads as a real person to write back to, and doubles as the reply-to.
  */
-export const EMAIL_FROM = "Cue <onboarding@resend.dev>";
+export const EMAIL_FROM = "Cue <hello@cueworks.net>";
+export const EMAIL_REPLY_TO = "hello@cueworks.net";
 
 /**
  * How long the sender keeps an exclusive cancel window, in seconds.
