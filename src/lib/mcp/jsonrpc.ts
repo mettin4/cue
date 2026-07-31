@@ -2,6 +2,7 @@ import "server-only";
 
 import type { UserRow } from "../cue/types";
 import {
+  addFunds,
   cancelSend,
   checkClaimStatus,
   getBalance,
@@ -73,6 +74,12 @@ const TOOLS = [
         },
       },
     },
+  },
+  {
+    name: "add_funds",
+    description:
+      "Add a small amount of test funds to the account from the shared demo pool, on this testnet demo. The funds have no real value. There is nothing to confirm and no details are needed. It is capped: a fixed amount per request, a limit per account in total, and a short wait between top ups. If the account has reached its limit or the wait has not passed, it says so and what to do next. On the real network funding would come through Circle; this is the placeholder until then.",
+    inputSchema: { type: "object", properties: {} },
   },
   {
     name: "cancel_send",
@@ -331,6 +338,8 @@ function toolResult(out: ToolOut) {
 
 async function callTool(user: UserRow, name: string, args: Record<string, unknown>) {
   switch (name) {
+    case "add_funds":
+      return addFunds(user);
     case "send_money":
       return sendMoney(user, args);
     case "cancel_send":

@@ -16,8 +16,9 @@ Set these in the environment, which for Claude Desktop means the `env` block of 
 
 ## Tools
 
-Eighteen tools, matching the remote server.
+Nineteen tools, matching the remote server.
 
+- **add_funds** adds a small amount of test funds to the account from the shared demo pool, on this testnet demo. The funds have no real value. Nothing to confirm. Capped: a fixed amount per request, a limit per account in total, and a short wait between top ups.
 - **send_money** recipient and amount. The recipient can be an email or a saved contact name. Two steps, see confirmation below.
 - **cancel_send** calls a send back before it is collected. Takes a send reference, or the recipient email to find the most recent uncollected send. Two steps.
 - **request_money** asks someone to pay you, by email or saved contact name. The reverse of a send. They get a link to pay and are not charged unless they choose to. Two steps.

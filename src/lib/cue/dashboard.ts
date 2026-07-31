@@ -3,7 +3,7 @@ import "server-only";
 import { getWalletBalance } from "../circle/wallets";
 import { getSupabaseAdmin } from "../supabase/server";
 import { addAmounts, maskEmail, normaliseEmail, toAmountString } from "./money";
-import type { TransactionRow, TransactionStatus, UserRow } from "./types";
+import type { TransactionKind, TransactionRow, TransactionStatus, UserRow } from "./types";
 
 export type ActivityItem = {
   id: string;
@@ -15,6 +15,8 @@ export type ActivityItem = {
   canCancel: boolean;
   /** Which way the money is moving from the viewer's point of view. */
   direction: "in" | "out";
+  /** A person to person transfer, or a top up of test funds from the pool. */
+  kind: TransactionKind;
 };
 
 export type DashboardStats = {
@@ -78,11 +80,12 @@ function toActivity(
     // Only the sender can call money back, and only before it is collected.
     canCancel: direction === "out" && row.status === "pending_claim",
     direction,
+    kind: row.kind ?? "transfer",
   };
 }
 
 const ROW_FIELDS =
-  "id, sender_id, recipient_email, amount_usdc, status, cancel_deadline, created_at, claimed_at, circle_tx_id, claim_token";
+  "id, sender_id, recipient_email, amount_usdc, status, kind, cancel_deadline, created_at, claimed_at, circle_tx_id, claim_token";
 
 export async function getDashboardData(user: UserRow): Promise<DashboardData> {
   const supabase = getSupabaseAdmin();
@@ -125,6 +128,8 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
   const activity = [
     ...outgoingRows.map((row) => toActivity(row, row.recipient_email, "out")),
     ...incomingRows.map((row) => {
+      // A top up from the pool has no person on the other side.
+      if (row.kind === "funding") return toActivity(row, "Test funds", "in");
       const email = row.sender_id ? senderEmails.get(row.sender_id) : undefined;
       return toActivity(row, email ? maskEmail(email) : "Someone", "in");
     }),
@@ -141,7 +146,8 @@ export async function getDashboardData(user: UserRow): Promise<DashboardData> {
       .filter((row) => row.status === "claimed")
       .reduce((total, row) => addAmounts(total, toAmountString(row.amount_usdc)), "0.00"),
     totalReceived: incomingRows
-      .filter((row) => row.status === "claimed")
+      // Test funds are added, not received from a person, so they are excluded.
+      .filter((row) => row.status === "claimed" && row.kind !== "funding")
       .reduce((total, row) => addAmounts(total, toAmountString(row.amount_usdc)), "0.00"),
     pendingCount: activity.filter((item) => item.status === "pending_claim").length,
   };

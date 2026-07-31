@@ -173,7 +173,7 @@ export async function createSend(params: {
  * much the whole demo can send in one day. Returns the balance and committed
  * total so the caller can raise a low balance alert without querying again.
  */
-async function assertTreasuryCanCover(
+export async function assertTreasuryCanCover(
   amount: string,
 ): Promise<{ balance: string; committed: string }> {
   const supabase = getSupabaseAdmin();
@@ -232,7 +232,7 @@ async function assertTreasuryCanCover(
  * skipped when no alert address is set. Never throws: an alert problem must not
  * affect a send that already went through.
  */
-async function alertIfLow(balance: string, committedAfter: string): Promise<void> {
+export async function alertIfLow(balance: string, committedAfter: string): Promise<void> {
   try {
     const to = treasuryAlertEmail();
     if (!to) return;

@@ -16,13 +16,14 @@ const STEPS = [
 ];
 
 const GROUPS: { label: string; body: string }[] = [
-  { label: "Moving money", body: "Send someone money, ask to be paid, split a bill, or set up a payment that repeats every month." },
+  { label: "Moving money", body: "Add test funds to your balance, send someone money, ask to be paid, split a bill, or set up a payment that repeats every month." },
   { label: "Asking about money", body: "Your balance, what you sent this month, or a plain summary of where it went." },
   { label: "Remembering people", body: "Save someone once, then just use their name instead of typing an email." },
   { label: "Staying in control", body: "Set a spending limit, call a send back before it is collected, or keep track of who owes what." },
 ];
 
 const EXAMPLES = [
+  "Add test funds so I can try sending",
   "Send Jack 20 dollars, jack@gmail.com",
   "What is my balance?",
   "Split 60 evenly between ana@example.com, bea@example.com and me",

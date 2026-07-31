@@ -13,6 +13,7 @@ import {
   saveContact as saveContactCore,
 } from "../cue/contacts";
 import { getDashboardData } from "../cue/dashboard";
+import { addTestFunds } from "../cue/fund";
 import {
   getDebt,
   listDebts,
@@ -214,6 +215,24 @@ export async function sendMoney(
       approve: { tool: "send_money", label: "Approve", token },
     },
   };
+}
+
+export async function addFunds(user: UserRow): Promise<ToolOut> {
+  try {
+    const result = await addTestFunds(user);
+    return {
+      text: `Added ${dollars(result.amount)} of test funds to your account. This is a testnet demo, so the funds have no real value. You can now try sending, splitting or requesting.`,
+      structuredContent: {
+        kind: "result",
+        status: "ok",
+        eyebrow: "Added",
+        amount: result.amount,
+        body: "Test funds added to your account. This is a testnet demo, so the funds have no real value.",
+      },
+    };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
 }
 
 export async function requestMoney(

@@ -4,7 +4,7 @@ import { Activity, LogOut } from "lucide-react";
 import { StatusText } from "@/components/ui/status-chip";
 import { signOut } from "@/app/auth/actions";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth/current-user";
-import { appUrl } from "@/lib/config";
+import { appUrl, fundAmountUsdc } from "@/lib/config";
 import { listContacts } from "@/lib/cue/contacts";
 import { listDebts } from "@/lib/cue/debts";
 import { getUsage, type Usage } from "@/lib/cue/limits";
@@ -88,6 +88,7 @@ function SignOutButton() {
 
 function ActivityRow({ item }: { item: ActivityItem }) {
   const incoming = item.direction === "in";
+  const funded = item.kind === "funding";
   const showUnlock = item.status === "pending_claim" && item.secondsUntilUnlock > 0;
 
   return (
@@ -100,15 +101,22 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         >
           {incoming ? "+" : "-"}${item.amount}
         </span>
-        <StatusText status={item.status} className="text-[13px]" />
+        {funded ? (
+          <span className="text-[13px] text-subtle-foreground">Added</span>
+        ) : (
+          <StatusText status={item.status} className="text-[13px]" />
+        )}
       </div>
 
       <div className="flex items-baseline gap-3 text-[13px] text-subtle-foreground">
         <span>
-          {incoming ? "from" : "to"} {item.counterparty}
-          {showUnlock ? ` · ${formatRemaining(item.secondsUntilUnlock)}` : ""}
+          {funded
+            ? "Test funds"
+            : `${incoming ? "from" : "to"} ${item.counterparty}${
+                showUnlock ? ` · ${formatRemaining(item.secondsUntilUnlock)}` : ""
+              }`}
         </span>
-        {item.canCancel ? (
+        {!funded && item.canCancel ? (
           <CancelButton
             transactionId={item.id}
             amount={item.amount}
@@ -133,7 +141,7 @@ function BalanceBlock({ data, usage }: { data: DashboardData; usage: Usage }) {
           ${data.balance}
         </p>
         <div className="pb-1">
-          <AddMoneyButton />
+          <AddMoneyButton amount={fundAmountUsdc().toFixed(2)} />
         </div>
       </div>
 

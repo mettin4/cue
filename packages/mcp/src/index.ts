@@ -6,6 +6,7 @@ import { z } from "zod";
 import { clientFromEnv } from "./config.js";
 import { newContext, type ToolResult } from "./tools.js";
 import {
+  addFunds,
   cancelSend,
   checkClaimStatus,
   getBalance,
@@ -47,6 +48,17 @@ function result(r: ToolResult) {
 }
 
 const server = new McpServer({ name: "cue", version: "0.1.0" });
+
+server.registerTool(
+  "add_funds",
+  {
+    title: "Add test funds",
+    description:
+      "Add a small amount of test funds to the account from the shared demo pool, on this testnet demo. The funds have no real value. There is nothing to confirm and no details are needed. It is capped: a fixed amount per request, a limit per account in total, and a short wait between top ups. If the account has reached its limit or the wait has not passed, it says so and what to do next. On the real network funding would come through Circle; this is the placeholder until then.",
+    inputSchema: {},
+  },
+  async () => result(await addFunds(ctx)),
+);
 
 server.registerTool(
   "send_money",

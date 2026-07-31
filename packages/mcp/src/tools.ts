@@ -135,6 +135,17 @@ async function resolveOrExplain(
   };
 }
 
+export async function addFunds(ctx: Ctx): Promise<ToolResult> {
+  try {
+    const result = await ctx.client.addFunds();
+    return {
+      text: `Added ${dollars(result.amount)} of test funds to your account. This is a testnet demo, so the funds have no real value. You can now try sending, splitting or requesting.`,
+    };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 export async function sendMoney(
   ctx: Ctx,
   args: { recipientEmail?: string; amount?: number; confirmationToken?: string },

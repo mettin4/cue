@@ -118,6 +118,13 @@ export class CueClient {
     );
   }
 
+  addFunds() {
+    return this.request<{ transactionId: string; amount: string }>("/api/fund", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
   send(input: { recipientEmail: string; amountUsdc: string }) {
     return this.request<{
       transactionId: string;

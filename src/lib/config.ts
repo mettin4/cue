@@ -151,6 +151,27 @@ export function treasuryAlertEmail(): string | null {
 }
 
 /**
+ * Test funds while on testnet. There is no real on ramp: clicking Add Money
+ * grants a small fixed amount from the same demo pool that funds sends. Three
+ * caps stop a signup loop from draining it, all sitting under the treasury
+ * floor and daily cap: a fixed grant per request, a lifetime total per account,
+ * and a cooldown between grants. All env tunable.
+ */
+export function fundAmountUsdc(): number {
+  return dollarsEnv("CUE_FUND_AMOUNT_USDC", 10);
+}
+
+export function fundAccountCapUsdc(): number {
+  return dollarsEnv("CUE_FUND_ACCOUNT_CAP_USDC", 30);
+}
+
+export function fundCooldownSeconds(): number {
+  const raw = process.env.CUE_FUND_COOLDOWN_SECONDS;
+  const value = raw ? Number(raw) : 300;
+  return Number.isFinite(value) && value >= 0 ? value : 300;
+}
+
+/**
  * Whether cancel windows shorter than the default are allowed. Off unless the
  * env flag is explicitly "true", so production always enforces the full window.
  */

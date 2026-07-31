@@ -8,12 +8,19 @@ export type TransactionStatus =
   | "cancelled"
   | "failed";
 
+/**
+ * How a row came to be. "transfer" is a person to person send. "funding" is a
+ * top up of test funds from the demo pool, shown as funds added, not received.
+ */
+export type TransactionKind = "transfer" | "funding";
+
 export type TransactionRow = {
   id: string;
   sender_id: string | null;
   recipient_email: string;
   amount_usdc: string | number;
   status: TransactionStatus;
+  kind?: TransactionKind;
   circle_tx_id: string | null;
   claim_token: string | null;
   cancel_deadline: string | null;

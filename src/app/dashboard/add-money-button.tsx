@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,10 +15,48 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { addFundsAction } from "./fund-actions";
 
-export function AddMoneyButton() {
+export function AddMoneyButton({ amount }: { amount: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setBusy(false);
+    setDone(false);
+    setError(null);
+  }
+
+  async function addFunds() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await addFundsAction();
+      if (!result.ok) {
+        setError(result.error ?? "We could not add funds right now. Please try again in a moment.");
+        setBusy(false);
+        return;
+      }
+      setDone(true);
+      setBusy(false);
+      router.refresh();
+    } catch {
+      setError("We could not reach Cue. Check your connection and try again.");
+      setBusy(false);
+    }
+  }
+
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <button
           type="button"
@@ -29,18 +69,41 @@ export function AddMoneyButton() {
 
       <DialogContent className="border-border-strong bg-popover sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Adding money is coming soon</DialogTitle>
-          <DialogDescription className="leading-relaxed">
-            Topping up your own balance lands in a later release. While Cue is in
-            testing the team funds accounts for you, so just ask if you need more
-            to try things out.
+          <DialogTitle>Add test funds</DialogTitle>
+          <DialogDescription className="space-y-3 leading-relaxed">
+            <span className="block">
+              This is a testnet demo. The money is test funds from a shared pool
+              and has no real value.
+            </span>
+            <span className="block">
+              On the real network, funding comes through Circle. This is the
+              placeholder until then.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button className="font-medium">Got It</Button>
-          </DialogClose>
+        {error ? (
+          <p role="alert" className="text-sm leading-relaxed text-destructive">
+            {error}
+          </p>
+        ) : null}
+
+        {done ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Added ${amount} to your balance. It updates here in a moment.
+          </p>
+        ) : null}
+
+        <DialogFooter className="gap-2 sm:gap-2">
+          {done ? (
+            <DialogClose asChild>
+              <Button className="font-medium">Done</Button>
+            </DialogClose>
+          ) : (
+            <Button className="font-medium" onClick={addFunds} disabled={busy}>
+              {busy ? "Adding…" : `Add $${amount}`}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
