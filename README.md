@@ -3,7 +3,7 @@
   <h1>Cue</h1>
   <p>Send money by chatting with Claude. The person receiving it only needs an email address.</p>
   <p>
-    <a href="https://cue-navy-psi.vercel.app">Live site</a>
+    <a href="https://cueworks.net">Live site</a>
     &nbsp;·&nbsp; Arc testnet (chain 5042002)
     &nbsp;·&nbsp; Circle hackathon submission
   </p>
@@ -11,7 +11,7 @@
 
 ## Live demo
 
-**https://cue-navy-psi.vercel.app**
+**https://cueworks.net**
 
 Runs on Arc testnet with test funds. No real money is involved.
 
@@ -93,7 +93,7 @@ packages/mcp/             local stdio MCP server, for development only
 
 This is the product. There is no config file to edit and nothing to install.
 
-1. Open the [dashboard](https://cue-navy-psi.vercel.app/dashboard), sign in with your email, then create your connect link. It looks like `https://cue-navy-psi.vercel.app/api/mcp/<token>`.
+1. Open the [dashboard](https://cueworks.net/dashboard), sign in with your email, then create your connect link. It looks like `https://cueworks.net/api/mcp/<token>`.
 2. In Claude, open Settings, then Connectors, then Add custom connector.
 3. Paste the link and save.
 

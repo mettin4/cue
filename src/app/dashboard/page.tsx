@@ -331,6 +331,9 @@ async function FullDashboard({ current }: { current: CurrentUser }) {
 
   const token = await getActiveToken(viewer.id);
   const connectUrl = token ? `${appUrl()}/api/mcp/${token.token}` : null;
+  // Connected means Claude has actually called the link. Until then, connecting
+  // is the primary setup step; after, it collapses to a quiet line.
+  const connected = Boolean(token?.last_used_at);
 
   const contacts = await listContacts(viewer.id);
   const contactViews = contacts.map((c) => ({
@@ -367,6 +370,12 @@ async function FullDashboard({ current }: { current: CurrentUser }) {
         <BalanceBlock data={data} usage={usage} />
       </div>
 
+      {!connected ? (
+        <div className="mt-10 border-t border-border/60 pt-8">
+          <ConnectCard mode="setup" initialUrl={connectUrl} />
+        </div>
+      ) : null}
+
       <ActivitySection data={data} />
 
       <div className="mt-12">
@@ -381,9 +390,11 @@ async function FullDashboard({ current }: { current: CurrentUser }) {
         <ContactsCard initialContacts={contactViews} />
       </div>
 
-      <div className="mt-12">
-        <ConnectCard initialUrl={connectUrl} />
-      </div>
+      {connected ? (
+        <div className="mt-12">
+          <ConnectCard mode="quiet" initialUrl={connectUrl} />
+        </div>
+      ) : null}
     </>
   );
 }

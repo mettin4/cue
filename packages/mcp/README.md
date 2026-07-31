@@ -10,7 +10,7 @@ Set these in the environment, which for Claude Desktop means the `env` block of 
 
 | Variable | Meaning |
 | --- | --- |
-| `CUE_API_URL` | Base URL of the deployed Cue API, for example `https://cue-navy-psi.vercel.app` |
+| `CUE_API_URL` | Base URL of the deployed Cue API, for example `https://cueworks.net` |
 | `CUE_API_KEY` | Shared service secret, the same value as `CUE_API_SECRET` on the server |
 | `CUE_TOKEN` | The account's connect token, created on the dashboard after signing in. This is the identity: it maps every call to the signed in owner. The shared secret is layered under it as a coarse gate |
 
@@ -62,7 +62,7 @@ The CLI in `test/invoke.ts` builds the same client and context the server uses a
 ```
 npm install
 npm run build
-CUE_API_URL=https://cue-navy-psi.vercel.app \
+CUE_API_URL=https://cueworks.net \
 CUE_API_KEY=your-cue-secret \
 CUE_USER=you@example.com \
   npm run test:tools -- recipient@example.com
