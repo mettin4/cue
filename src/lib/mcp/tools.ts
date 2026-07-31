@@ -137,10 +137,11 @@ export async function sendMoney(
       return {
         text: `Sent ${dollars(payload.amount)} to ${payload.recipientEmail}. They can collect it in ${unlock}, and you can call it back until then.`,
         structuredContent: {
-          kind: "send_success",
+          kind: "result",
+          status: "ok",
+          eyebrow: "Sent",
           amount: payload.amount,
-          recipient: payload.recipientEmail,
-          unlockLabel: unlock,
+          body: `On its way to ${payload.recipientEmail}. They can collect it in ${unlock}, and you can call it back until then.`,
         },
       };
     } catch (error) {
@@ -202,13 +203,15 @@ export async function sendMoney(
       `Send ${dollars(amount)} to ${resolved.label}. They will have about an hour to collect it, and you can call it back during that time.\n` +
       `Once the user approves, call send_money again with confirmationToken "${token}".`,
     structuredContent: {
-      kind: "send_preview",
+      kind: "confirm",
+      eyebrow: "You are sending",
       amount,
-      recipient: resolved.label,
-      unlockLabel,
-      limitLeft,
-      limitScope,
-      confirmationToken: token,
+      rows: [
+        { label: "To", value: resolved.label },
+        { label: "Collectable", value: `in ${unlockLabel}` },
+        ...(limitLeft ? [{ label: `Left ${limitScope}`, value: `$${limitLeft}` }] : []),
+      ],
+      approve: { tool: "send_money", label: "Approve", token },
     },
   };
 }
@@ -235,6 +238,13 @@ export async function requestMoney(
       });
       return {
         text: `Requested ${dollars(payload.amount)} from ${payload.targetEmail}. I sent them a link to pay you. They are not charged unless they choose to pay.`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Requested",
+          amount: payload.amount,
+          body: `I sent ${payload.targetEmail} a link to pay you. They are not charged unless they choose to pay.`,
+        },
       };
     } catch (error) {
       return { text: message(error), isError: true };
@@ -270,6 +280,14 @@ export async function requestMoney(
       `Preview, no money has moved yet. Show this to the user and wait for their approval:\n` +
       `Request ${dollars(amount)} from ${resolved.label}. They will get an email with a link to pay you, and nothing is charged unless they choose to pay.\n` +
       `Once the user approves, call request_money again with confirmationToken "${token}".`,
+    structuredContent: {
+      kind: "confirm",
+      eyebrow: "Requesting",
+      amount,
+      rows: [{ label: "From", value: resolved.label }],
+      footnote: "They are only charged if they choose to pay.",
+      approve: { tool: "request_money", label: "Approve", token },
+    },
   };
 }
 
@@ -331,6 +349,13 @@ export async function splitMoney(
     if (failed.length === 0) {
       return {
         text: `Split sent. ${sentLines}. Each person can collect their share within about an hour, and you can call any of them back until then.`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Split sent",
+          amount: (total / 100).toFixed(2),
+          body: `Sent to ${sent.length} ${sent.length === 1 ? "person" : "people"}. Each can collect their share within about an hour, and you can call any of them back until then.`,
+        },
       };
     }
 
@@ -421,6 +446,13 @@ export async function splitMoney(
       `Split ${dollars(total)} between ${items.length} people:\n${lines.join("\n")}\n` +
       `That is ${dollars(total)} in total. Each is a separate send they can collect within about an hour, and you can call any of them back during that time.\n` +
       `Once the user approves, call split_money again with confirmationToken "${token}".`,
+    structuredContent: {
+      kind: "confirm",
+      eyebrow: "Splitting",
+      amount: total,
+      rows: items.map((i) => ({ label: i.label, value: `$${i.amount}` })),
+      approve: { tool: "split_money", label: "Approve", token },
+    },
   };
 }
 
@@ -440,6 +472,12 @@ export async function saveContact(
       text: `Saved ${contact.name} (${contact.email}) to your contacts. You can now say things like send ${dollars(
         "5.00",
       )} to ${contact.name}.`,
+      structuredContent: {
+        kind: "result",
+        status: "ok",
+        title: `Saved ${contact.name}`,
+        body: `You can now say things like send ${dollars("5.00")} to ${contact.name}.`,
+      },
     };
   } catch (error) {
     return { text: message(error), isError: true };
@@ -452,10 +490,23 @@ export async function listContacts(user: UserRow): Promise<ToolOut> {
     if (contacts.length === 0) {
       return {
         text: "You have not saved any contacts yet. Save one with save_contact, for example the name Alex and their email address.",
+        structuredContent: {
+          kind: "result",
+          status: "info",
+          title: "No contacts yet",
+          body: "Save one with save_contact, for example the name Alex and their email address.",
+        },
       };
     }
     const lines = contacts.map((c) => `- ${c.name}: ${c.email}`);
-    return { text: `Your contacts:\n${lines.join("\n")}` };
+    return {
+      text: `Your contacts:\n${lines.join("\n")}`,
+      structuredContent: {
+        kind: "panel",
+        eyebrow: "Contacts",
+        list: { items: contacts.map((c) => ({ lead: c.name, sub: c.email })) },
+      },
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }
@@ -486,6 +537,13 @@ export async function schedulePayment(
         text: `Scheduled ${dollars(result.amount)} to ${payload.recipientEmail} on the ${ordinal(
           result.dayOfMonth,
         )} of each month. The first payment goes out on ${formatRunDate(result.firstRun)}.`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Scheduled",
+          amount: result.amount,
+          body: `To ${payload.recipientEmail} on the ${ordinal(result.dayOfMonth)} of each month. First payment ${formatRunDate(result.firstRun)}.`,
+        },
       };
     } catch (error) {
       return { text: message(error), isError: true };
@@ -533,6 +591,18 @@ export async function schedulePayment(
         args.dayOfMonth,
       )} each month until it is paused or deleted.\n` +
       `Once the user approves, call schedule_payment again with confirmationToken "${token}".`,
+    structuredContent: {
+      kind: "confirm",
+      eyebrow: "Scheduling",
+      amount,
+      rows: [
+        { label: "To", value: resolved.label },
+        { label: "First payment", value: formatRunDate(firstRun) },
+        { label: "Repeats", value: `monthly on the ${ordinal(args.dayOfMonth)}` },
+      ],
+      footnote: "Repeats until you pause or delete it.",
+      approve: { tool: "schedule_payment", label: "Approve", token },
+    },
   };
 }
 
@@ -552,10 +622,24 @@ export async function manageSchedules(
     if (used) return used;
     const removed = await deleteSchedule(user.id, payload.scheduleId);
     if (!removed) {
-      return { text: "That schedule was already removed, so there was nothing to delete." };
+      return {
+        text: "That schedule was already removed, so there was nothing to delete.",
+        structuredContent: {
+          kind: "result",
+          status: "info",
+          title: "Already removed",
+          body: "That schedule was already removed, so there was nothing to delete.",
+        },
+      };
     }
     return {
       text: `Deleted the scheduled payment of ${dollars(payload.amount)} to ${payload.recipient}. It will not run again.`,
+      structuredContent: {
+        kind: "result",
+        status: "ok",
+        title: "Schedule deleted",
+        body: `The ${dollars(payload.amount)} to ${payload.recipient} will not run again.`,
+      },
     };
   }
 
@@ -567,6 +651,12 @@ export async function manageSchedules(
       if (schedules.length === 0) {
         return {
           text: "You have no scheduled payments. Set one up with schedule_payment.",
+          structuredContent: {
+            kind: "result",
+            status: "info",
+            title: "No scheduled payments",
+            body: "Set one up with schedule_payment.",
+          },
         };
       }
       const lines = schedules.map((s) => {
@@ -576,7 +666,24 @@ export async function manageSchedules(
           s.day_of_month,
         )} of each month, ${state}. Reference ${s.id}.`;
       });
-      return { text: `Your scheduled payments:\n${lines.join("\n")}` };
+      return {
+        text: `Your scheduled payments:\n${lines.join("\n")}`,
+        structuredContent: {
+          kind: "panel",
+          eyebrow: "Scheduled payments",
+          list: {
+            items: schedules.map((s) => {
+              const next = formatRunDate(nextRunDate(s.day_of_month, s.last_run_at));
+              return {
+                lead: maskEmail(s.recipient_email),
+                sub: `${dollars(toAmountString(s.amount_usdc))} on the ${ordinal(s.day_of_month)} · ${
+                  s.active ? `next ${next}` : "paused"
+                }`,
+              };
+            }),
+          },
+        },
+      };
     }
 
     if (!args.scheduleId) {
@@ -593,6 +700,14 @@ export async function manageSchedules(
         text: `Paused the ${dollars(toAmountString(updated.amount_usdc))} payment to ${maskEmail(
           updated.recipient_email,
         )}. It will not run until you resume it.`,
+        structuredContent: {
+          kind: "result",
+          status: "info",
+          title: "Paused",
+          body: `The ${dollars(toAmountString(updated.amount_usdc))} payment to ${maskEmail(
+            updated.recipient_email,
+          )} will not run until you resume it.`,
+        },
       };
     }
 
@@ -603,6 +718,14 @@ export async function manageSchedules(
         text: `Resumed the ${dollars(toAmountString(updated.amount_usdc))} payment to ${maskEmail(
           updated.recipient_email,
         )} on the ${ordinal(updated.day_of_month)} of each month.`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          title: "Resumed",
+          body: `The ${dollars(toAmountString(updated.amount_usdc))} payment to ${maskEmail(
+            updated.recipient_email,
+          )} on the ${ordinal(updated.day_of_month)} of each month.`,
+        },
       };
     }
 
@@ -626,6 +749,17 @@ export async function manageSchedules(
           schedule.day_of_month,
         )} of each month. This cannot be undone, but you can set it up again later.\n` +
         `Once the user approves, call manage_schedules again with confirmationToken "${token}".`,
+      structuredContent: {
+        kind: "confirm",
+        eyebrow: "Deleting a schedule",
+        amount,
+        rows: [
+          { label: "To", value: recipient },
+          { label: "On the", value: ordinal(schedule.day_of_month) },
+        ],
+        footnote: "This cannot be undone, but you can set it up again later.",
+        approve: { tool: "manage_schedules", label: "Delete", token },
+      },
     };
   } catch (error) {
     return { text: message(error), isError: true };
@@ -653,6 +787,13 @@ export async function cancelSend(
       });
       return {
         text: `Called back ${dollars(payload.amount)} that was sent to ${payload.recipient}. They can no longer collect it.`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Called back",
+          amount: payload.amount,
+          body: `${payload.recipient} can no longer collect it.`,
+        },
       };
     } catch (error) {
       return { text: message(error), isError: true };
@@ -707,6 +848,13 @@ export async function cancelSend(
         `Preview, no money has moved yet. Show this to the user and wait for their approval:\n` +
         `Call back ${dollars(target.amount)} that was sent to ${target.recipient}. They have not collected it yet.\n` +
         `Once the user approves, call cancel_send again with confirmationToken "${token}".`,
+      structuredContent: {
+        kind: "confirm",
+        eyebrow: "Calling back",
+        amount: target.amount,
+        rows: [{ label: "To", value: target.recipient }],
+        approve: { tool: "cancel_send", label: "Call back", token },
+      },
     };
   } catch (error) {
     return { text: message(error), isError: true };
@@ -738,22 +886,43 @@ export async function getBalance(user: UserRow): Promise<ToolOut> {
       text += " No spending limits are set.";
     }
 
+    const limitRows: { label: string; value: string; tone: string }[] = [];
+    if (usage.daily) {
+      limitRows.push({
+        label: `Daily limit ${dollars(usage.daily.limit)}`,
+        value: `${dollars(usage.daily.remaining)} left today`,
+        tone: "mint",
+      });
+    }
+    if (usage.monthly) {
+      limitRows.push({
+        label: `Monthly limit ${dollars(usage.monthly.limit)}`,
+        value: `${dollars(usage.monthly.remaining)} left this month`,
+        tone: "mint",
+      });
+    }
+
     return {
       text,
       structuredContent: {
-        kind: "balance",
-        balance: data.balance,
-        totalSent: data.stats.totalSent,
-        totalReceived: data.stats.totalReceived,
-        pendingCount: data.stats.pendingCount,
-        daily: usage.daily ? { limit: usage.daily.limit, remaining: usage.daily.remaining } : undefined,
-        monthly: usage.monthly ? { limit: usage.monthly.limit, remaining: usage.monthly.remaining } : undefined,
-        activity: data.activity.slice(0, 5).map((a) => ({
-          amount: a.amount,
-          direction: a.direction,
-          counterparty: a.counterparty,
-          status: a.status,
-        })),
+        kind: "panel",
+        eyebrow: "Balance",
+        amount: data.balance,
+        summary: `Sent ${dollars(data.stats.totalSent)} · Received ${dollars(
+          data.stats.totalReceived,
+        )} · ${data.stats.pendingCount} pending`,
+        rows: limitRows.length ? limitRows : undefined,
+        list: data.activity.length
+          ? {
+              label: "Recent activity",
+              items: data.activity.slice(0, 5).map((a) => ({
+                lead: `${a.direction === "in" ? "+" : "-"}$${a.amount}`,
+                leadTone: a.direction === "in" ? "in" : "out",
+                sub: `${a.direction === "in" ? "from" : "to"} ${a.counterparty}`,
+                status: a.status,
+              })),
+            }
+          : undefined,
       },
     };
   } catch (error) {
@@ -784,7 +953,15 @@ export async function getSpendingSummaryTool(
         Number(s.totalReceived) > 0
           ? ` You received ${dollars(s.totalReceived)}.`
           : "";
-      return { text: `You have not sent anything ${s.periodLabel}.${received}` };
+      return {
+        text: `You have not sent anything ${s.periodLabel}.${received}`,
+        structuredContent: {
+          kind: "result",
+          status: "info",
+          title: `Nothing sent ${s.periodLabel}`,
+          body: Number(s.totalReceived) > 0 ? `You received ${dollars(s.totalReceived)}.` : "No sends in this period.",
+        },
+      };
     }
 
     const plural = s.transfers === 1 ? "transfer" : "transfers";
@@ -804,7 +981,23 @@ export async function getSpendingSummaryTool(
       text += ` You received ${dollars(s.totalReceived)} over the same time.`;
     }
 
-    return { text };
+    return {
+      text,
+      structuredContent: {
+        kind: "panel",
+        eyebrow: capitalize(s.periodLabel),
+        amount: s.totalSent,
+        summary: `${s.transfers} ${plural}${
+          Number(s.totalReceived) > 0 ? ` · received ${dollars(s.totalReceived)}` : ""
+        }`,
+        list: s.top.length
+          ? {
+              label: "Top recipients",
+              items: s.top.map((t) => ({ lead: t.label, sub: `${dollars(t.amount)} · ${t.share}%` })),
+            }
+          : undefined,
+      },
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }
@@ -826,7 +1019,7 @@ export async function setSpendingLimit(
     if (used) return used;
     try {
       const limits = await setLimits(user.id, { daily: payload.daily, monthly: payload.monthly });
-      return { text: describeLimits(limits) };
+      return { text: describeLimits(limits), structuredContent: limitsResult(limits) };
     } catch (error) {
       return { text: message(error), isError: true };
     }
@@ -860,13 +1053,20 @@ export async function setSpendingLimit(
         `Preview, the limit has not changed yet. This loosens a safety control, so show it to the user and wait for their approval:\n` +
         `${describeProposed(current, next)}\n` +
         `Once the user approves, call set_spending_limit again with confirmationToken "${token}".`,
+      structuredContent: {
+        kind: "confirm",
+        eyebrow: "Loosening a limit",
+        rows: proposedRows(next),
+        footnote: describeProposed(current, next),
+        approve: { tool: "set_spending_limit", label: "Approve", token },
+      },
     };
   }
 
   // Tightening or setting a first limit applies immediately.
   try {
     const limits = await setLimits(user.id, next);
-    return { text: describeLimits(limits) };
+    return { text: describeLimits(limits), structuredContent: limitsResult(limits) };
   } catch (error) {
     return { text: message(error), isError: true };
   }
@@ -892,9 +1092,16 @@ export async function trackDebtTool(
     });
     const amount = toAmountString(debt.amount);
     const about = debt.note ? ` for ${debt.note}` : "";
+    const body = about ? `Noted${about}.` : "Noted.";
     return debt.direction === "they_owe"
-      ? { text: `Noted that ${label} owes you ${dollars(amount)}${about}.` }
-      : { text: `Noted that you owe ${label} ${dollars(amount)}${about}.` };
+      ? {
+          text: `Noted that ${label} owes you ${dollars(amount)}${about}.`,
+          structuredContent: { kind: "result", status: "ok", title: `${label} owes you ${dollars(amount)}`, body },
+        }
+      : {
+          text: `Noted that you owe ${label} ${dollars(amount)}${about}.`,
+          structuredContent: { kind: "result", status: "ok", title: `You owe ${label} ${dollars(amount)}`, body },
+        };
   } catch (error) {
     return { text: message(error), isError: true };
   }
@@ -903,7 +1110,12 @@ export async function trackDebtTool(
 export async function listDebtsTool(user: UserRow): Promise<ToolOut> {
   try {
     const people = await listDebts(user.id);
-    if (people.length === 0) return { text: "You have no open debts tracked." };
+    if (people.length === 0) {
+      return {
+        text: "You have no open debts tracked.",
+        structuredContent: { kind: "result", status: "info", title: "No open debts", body: "You have no open debts tracked." },
+      };
+    }
 
     const lines = people.map((p) => {
       const net =
@@ -922,7 +1134,25 @@ export async function listDebtsTool(user: UserRow): Promise<ToolOut> {
       return `- ${net}. ${items}`;
     });
 
-    return { text: `Open debts:\n${lines.join("\n")}` };
+    return {
+      text: `Open debts:\n${lines.join("\n")}`,
+      structuredContent: {
+        kind: "panel",
+        eyebrow: "Debts",
+        list: {
+          items: people.map((p) => ({
+            lead: p.label,
+            sub:
+              p.net > 0
+                ? `owes you ${dollars(p.net.toFixed(2))} net`
+                : p.net < 0
+                  ? `you owe ${dollars(Math.abs(p.net).toFixed(2))} net`
+                  : "even",
+            status: "open",
+          })),
+        },
+      },
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }
@@ -946,6 +1176,13 @@ export async function settleDebtTool(
       const done = await settleBySend(user, payload.debtId);
       return {
         text: `Sent ${dollars(done.amount)} to ${done.label} and marked the debt settled. They can collect it within about an hour.`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Sent",
+          amount: done.amount,
+          body: `To ${done.label}, and the debt is marked settled. They can collect it within about an hour.`,
+        },
       };
     } catch (error) {
       return { text: message(error), isError: true };
@@ -958,7 +1195,12 @@ export async function settleDebtTool(
 
   const debt = await getDebt(user.id, args.debtId);
   if (!debt) return { text: "I could not find that debt for this account.", isError: true };
-  if (debt.status === "settled") return { text: "That debt is already settled." };
+  if (debt.status === "settled") {
+    return {
+      text: "That debt is already settled.",
+      structuredContent: { kind: "result", status: "info", title: "Already settled", body: "That debt is already settled." },
+    };
+  }
 
   const amount = toAmountString(debt.amount);
   const label = debt.counterparty_name ?? (debt.counterparty_email ? maskEmail(debt.counterparty_email) : "them");
@@ -989,13 +1231,34 @@ export async function settleDebtTool(
         `Preview, no money has moved yet. Show this to the user and wait for their approval:\n` +
         `Settle by sending ${dollars(amount)} to ${label}. They will have about an hour to collect it, and the debt is marked settled once it goes out.\n` +
         `Once the user approves, call settle_debt again with confirmationToken "${token}".`,
+      structuredContent: {
+        kind: "confirm",
+        eyebrow: "Settling by sending",
+        amount,
+        rows: [{ label: "To", value: label }],
+        footnote: "The debt is marked settled once it goes out.",
+        approve: { tool: "settle_debt", label: "Approve", token },
+      },
     };
   }
 
   // Plain settle: just mark it, no money moves.
   const settled = await settleDebt(user.id, debt.id);
-  if (!settled) return { text: "That debt was already settled." };
-  return { text: `Marked the ${dollars(amount)} with ${label} as settled. No money was moved.` };
+  if (!settled) {
+    return {
+      text: "That debt was already settled.",
+      structuredContent: { kind: "result", status: "info", title: "Already settled", body: "That debt was already settled." },
+    };
+  }
+  return {
+    text: `Marked the ${dollars(amount)} with ${label} as settled. No money was moved.`,
+    structuredContent: {
+      kind: "result",
+      status: "ok",
+      title: "Settled",
+      body: `The ${dollars(amount)} with ${label} is marked settled. No money was moved.`,
+    },
+  };
 }
 
 export async function remindDebtTool(
@@ -1007,7 +1270,15 @@ export async function remindDebtTool(
   }
   try {
     const { label, amount } = await sendDebtReminder(user, args.debtId);
-    return { text: `Sent a friendly reminder to ${label} about the ${dollars(amount)} they owe you.` };
+    return {
+      text: `Sent a friendly reminder to ${label} about the ${dollars(amount)} they owe you.`,
+      structuredContent: {
+        kind: "result",
+        status: "ok",
+        title: "Reminder sent",
+        body: `Sent ${label} a friendly reminder about the ${dollars(amount)} they owe you.`,
+      },
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }
@@ -1022,6 +1293,30 @@ function describeLimits(limits: { daily: string | null; monthly: string | null }
   parts.push(limits.daily ? `a daily limit of ${dollars(limits.daily)}` : "no daily limit");
   parts.push(limits.monthly ? `a monthly limit of ${dollars(limits.monthly)}` : "no monthly limit");
   return `Done. You now have ${parts[0]} and ${parts[1]}.`;
+}
+
+/** A result view for a limit change, shown after the limits are set. */
+function limitsResult(limits: { daily: string | null; monthly: string | null }): Record<string, unknown> {
+  const daily = limits.daily ? dollars(limits.daily) : "none";
+  const monthly = limits.monthly ? dollars(limits.monthly) : "none";
+  return {
+    kind: "result",
+    status: "ok",
+    title: "Limits updated",
+    body: `Daily ${daily}, monthly ${monthly}.`,
+  };
+}
+
+/** Detail rows for a proposed limit change on the confirmation card. */
+function proposedRows(next: { daily?: number | null; monthly?: number | null }): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = [];
+  if (next.daily !== undefined) {
+    rows.push({ label: "Daily", value: next.daily === null ? "none" : dollars(next.daily.toFixed(2)) });
+  }
+  if (next.monthly !== undefined) {
+    rows.push({ label: "Monthly", value: next.monthly === null ? "none" : dollars(next.monthly.toFixed(2)) });
+  }
+  return rows;
 }
 
 function describeField(name: string, cur: string | null, proposed: number | null | undefined): string | null {
@@ -1054,14 +1349,33 @@ export async function getHistory(
     if (args.type === "requests") {
       const items = (await listRequests(user, { direction: args.direction, limit }))
         .slice(0, limit);
-      if (items.length === 0) return { text: "There are no money requests yet." };
+      if (items.length === 0) {
+        return {
+          text: "There are no money requests yet.",
+          structuredContent: { kind: "result", status: "info", title: "No money requests", body: "There are no money requests yet." },
+        };
+      }
 
       const lines = items.map((item) =>
         item.direction === "out"
           ? `Requested ${dollars(item.amount)} from ${item.counterparty}, ${requestStatusPhrase(item.status)}.`
           : `${item.counterparty} requested ${dollars(item.amount)} from you, ${requestStatusPhrase(item.status)}.`,
       );
-      return { text: `Money requests:\n${lines.join("\n")}` };
+      return {
+        text: `Money requests:\n${lines.join("\n")}`,
+        structuredContent: {
+          kind: "panel",
+          eyebrow: "Money requests",
+          list: {
+            items: items.map((item) => ({
+              lead: `$${item.amount}`,
+              leadTone: item.direction === "out" ? "out" : "in",
+              sub: item.direction === "out" ? `to ${item.counterparty}` : `from ${item.counterparty}`,
+              status: item.status,
+            })),
+          },
+        },
+      };
     }
 
     const data = await getDashboardData(user);
@@ -1069,7 +1383,12 @@ export async function getHistory(
       .filter((item) => !args.direction || item.direction === args.direction)
       .slice(0, limit);
 
-    if (items.length === 0) return { text: "There is no activity yet." };
+    if (items.length === 0) {
+      return {
+        text: "There is no activity yet.",
+        structuredContent: { kind: "result", status: "info", title: "No activity yet", body: "There is no activity yet." },
+      };
+    }
 
     const lines = items.map((item) => {
       const unlock =
@@ -1081,7 +1400,21 @@ export async function getHistory(
         : `Received ${dollars(item.amount)} from ${item.counterparty}, ${statusPhrase(item.status)}.`;
     });
 
-    return { text: `Recent activity:\n${lines.join("\n")}` };
+    return {
+      text: `Recent activity:\n${lines.join("\n")}`,
+      structuredContent: {
+        kind: "panel",
+        eyebrow: "Recent activity",
+        list: {
+          items: items.map((item) => ({
+            lead: `${item.direction === "in" ? "+" : "-"}$${item.amount}`,
+            leadTone: item.direction === "in" ? "in" : "out",
+            sub: `${item.direction === "in" ? "from" : "to"} ${item.counterparty}`,
+            status: item.status,
+          })),
+        },
+      },
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }
@@ -1096,23 +1429,44 @@ export async function checkClaimStatus(
     if (!s) return { text: "I could not find that send for this account.", isError: true };
 
     if (s.status === "claimed") {
-      return { text: `The ${dollars(s.amount)} sent to ${s.recipient} has been collected.` };
+      return {
+        text: `The ${dollars(s.amount)} sent to ${s.recipient} has been collected.`,
+        structuredContent: { kind: "panel", eyebrow: "Collected", amount: s.amount, summary: `Collected by ${s.recipient}.` },
+      };
     }
     if (s.status === "cancelled") {
-      return { text: `The ${dollars(s.amount)} sent to ${s.recipient} was called back.` };
+      return {
+        text: `The ${dollars(s.amount)} sent to ${s.recipient} was called back.`,
+        structuredContent: { kind: "panel", eyebrow: "Called back", amount: s.amount, summary: `This send to ${s.recipient} was called back.` },
+      };
     }
     if (s.status === "failed") {
-      return { text: `That send to ${s.recipient} did not go through.` };
+      return {
+        text: `That send to ${s.recipient} did not go through.`,
+        structuredContent: { kind: "result", status: "error", title: "Did not go through", body: `That send to ${s.recipient} did not go through.` },
+      };
     }
     if (s.secondsUntilUnlock > 0) {
       return {
         text: `The ${dollars(s.amount)} sent to ${s.recipient} has not been collected yet. It unlocks in ${humanizeSeconds(
           s.secondsUntilUnlock,
         )}, and you can call it back until then.`,
+        structuredContent: {
+          kind: "panel",
+          eyebrow: "Waiting to be collected",
+          amount: s.amount,
+          summary: `Sent to ${s.recipient}. Unlocks in ${humanizeSeconds(s.secondsUntilUnlock)}, and you can call it back until then.`,
+        },
       };
     }
     return {
       text: `The ${dollars(s.amount)} sent to ${s.recipient} has not been collected yet. It is now available for them to collect.`,
+      structuredContent: {
+        kind: "panel",
+        eyebrow: "Waiting to be collected",
+        amount: s.amount,
+        summary: `Sent to ${s.recipient}. Available for them to collect now.`,
+      },
     };
   } catch (error) {
     return { text: message(error), isError: true };
@@ -1128,7 +1482,15 @@ export async function resendClaimLink(
     if (!result.ok) {
       return { text: "I could not send the collection email right now.", isError: true };
     }
-    return { text: `Sent the collection email again to ${result.recipient}.` };
+    return {
+      text: `Sent the collection email again to ${result.recipient}.`,
+      structuredContent: {
+        kind: "result",
+        status: "ok",
+        title: "Collection email sent",
+        body: `Sent the collection email again to ${result.recipient}.`,
+      },
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }

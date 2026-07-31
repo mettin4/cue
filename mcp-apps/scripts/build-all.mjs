@@ -13,8 +13,7 @@ mkdirSync(outDir, { recursive: true });
 
 // Entry html basename -> exported constant name.
 const CARDS = [
-  { input: "confirm-send", constName: "CONFIRM_SEND_HTML" },
-  { input: "balance", constName: "BALANCE_HTML" },
+  { input: "card", constName: "CARD_HTML" },
 ];
 
 for (const { input, constName } of CARDS) {

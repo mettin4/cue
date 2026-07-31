@@ -22,26 +22,32 @@ import {
   trackDebtTool,
   type ToolOut,
 } from "./tools";
-import { CONFIRM_SEND_HTML } from "./ui/confirm-send.generated";
-import { BALANCE_HTML } from "./ui/balance.generated";
+import { CARD_HTML } from "./ui/card.generated";
 
 const SERVER_VERSION = "0.1.0";
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const DEFAULT_PROTOCOL = "2025-06-18";
 
 /**
- * MCP Apps UI resources. A tool references one by uri in its _meta.ui, and the
- * host fetches it with resources/read and renders it in a sandboxed iframe. The
- * card is a static template: the amount, recipient and confirmation token come
- * from the tool result, never baked into the HTML.
+ * The one MCP Apps UI resource. Every tool references it by uri in its _meta,
+ * and the host fetches it with resources/read and renders it in a sandboxed
+ * iframe. The card is a static template: the view it shows (a confirmation, a
+ * panel or a result) and all its data come from the tool result, never baked
+ * into the HTML.
  */
-const CONFIRM_SEND_URI = "ui://cue/confirm-send.html";
-const BALANCE_URI = "ui://cue/balance.html";
+const CARD_URI = "ui://cue/card.html";
 const UI_MIME = "text/html;profile=mcp-app";
 
 const UI_RESOURCES: Record<string, { name: string; html: string }> = {
-  [CONFIRM_SEND_URI]: { name: "Send confirmation", html: CONFIRM_SEND_HTML },
-  [BALANCE_URI]: { name: "Balance", html: BALANCE_HTML },
+  [CARD_URI]: { name: "Cue", html: CARD_HTML },
+};
+
+// Both forms: the nested object the docs show, and the flat wire key the MCP
+// Apps SDK always emits and the host actually reads. Serving only the nested
+// form left the card unrendered in Claude.
+const CARD_META = {
+  ui: { resourceUri: CARD_URI },
+  "ui/resourceUri": CARD_URI,
 };
 
 /**
@@ -66,13 +72,6 @@ const TOOLS = [
           description: "Token from the preview. Only set this on the second call, after the user approves.",
         },
       },
-    },
-    // Both forms: the nested object the docs show, and the flat wire key the
-    // MCP Apps SDK always emits and the host actually reads. Serving only the
-    // nested form left the card unrendered in Claude.
-    _meta: {
-      ui: { resourceUri: CONFIRM_SEND_URI },
-      "ui/resourceUri": CONFIRM_SEND_URI,
     },
   },
   {
@@ -192,7 +191,6 @@ const TOOLS = [
     description:
       "Get the current account balance in dollars, plus totals sent and received, how many sends are waiting to be collected, and any daily or monthly spending limit with how much is left.",
     inputSchema: { type: "object", properties: {} },
-    _meta: { ui: { resourceUri: BALANCE_URI }, "ui/resourceUri": BALANCE_URI },
   },
   {
     name: "get_spending_summary",
@@ -414,7 +412,12 @@ export async function handleMessage(
       return { jsonrpc: "2.0", id, result: {} };
 
     case "tools/list":
-      return { jsonrpc: "2.0", id, result: { tools: TOOLS } };
+      // Every tool renders through the one Cue card.
+      return {
+        jsonrpc: "2.0",
+        id,
+        result: { tools: TOOLS.map((t) => ({ ...t, _meta: CARD_META })) },
+      };
 
     case "resources/list":
       return {
