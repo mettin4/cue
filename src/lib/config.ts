@@ -178,3 +178,40 @@ export function fundCooldownSeconds(): number {
 export function allowShortCancelWindow(): boolean {
   return process.env.CUE_ALLOW_SHORT_WINDOW === "true";
 }
+
+/**
+ * On-chain escrow (the honest, on-chain version of the call back window). These
+ * back the demonstrated escrow alternative, not the default send path.
+ *
+ * The CueEscrow contract on Arc testnet holds USDC per deposit until an unlock
+ * time: before it, only the depositor (treasury) can reclaim; at or after it,
+ * the recipient can withdraw. Empty CUE_ESCROW_ADDRESS disables the feature.
+ */
+export function escrowAddress(): string {
+  return requireEnv("CUE_ESCROW_ADDRESS");
+}
+
+export function escrowEnabled(): boolean {
+  return Boolean(process.env.CUE_ESCROW_ADDRESS?.trim());
+}
+
+/** ERC-20 USDC on Arc testnet, 6 decimals. Fixed address, env overridable. */
+export function arcUsdcAddress(): string {
+  return process.env.ARC_USDC_ADDRESS?.trim() || "0x3600000000000000000000000000000000000000";
+}
+
+/** Arc testnet JSON-RPC, used only to read a transaction receipt's event logs. */
+export function arcRpcUrl(): string {
+  return process.env.ARC_RPC_URL?.trim() || "https://rpc.testnet.arc.network";
+}
+
+/**
+ * How long an escrow deposit stays locked before the recipient can withdraw.
+ * Short by default so the demo can show a withdrawal quickly. The default send
+ * path keeps its own one hour call back window, unchanged.
+ */
+export function escrowUnlockSeconds(): number {
+  const raw = process.env.CUE_ESCROW_UNLOCK_SECONDS;
+  const value = raw ? Number(raw) : 60;
+  return Number.isFinite(value) && value > 0 ? value : 60;
+}

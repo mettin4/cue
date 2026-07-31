@@ -38,7 +38,38 @@ The words crypto, wallet and USDC never appear anywhere the user can see. To a s
 - **Circle Developer Controlled Wallets** for wallet sets, recipient wallet creation, balance reads and USDC transfers. Client setup in [`src/lib/circle/client.ts`](src/lib/circle/client.ts), all wallet and transfer operations in [`src/lib/circle/wallets.ts`](src/lib/circle/wallets.ts).
 - **Arc testnet**, chain id `5042002`. USDC is the native gas token on Arc, so a wallet funded with USDC pays for its own transfers and there is no separate gas asset to manage. The chain identifier is taken from the SDK enum (`Blockchain.ArcTestnet`) rather than hardcoded, in [`src/lib/circle/client.ts`](src/lib/circle/client.ts).
 - **Transaction status polling** with a timeout that fails loudly rather than silently, in `waitForTransaction` in [`src/lib/circle/wallets.ts`](src/lib/circle/wallets.ts). It throws on timeout instead of returning a half finished transfer, so callers cannot mistake pending for settled.
-- **Circle Contracts** is planned next, for an on chain escrow contract that would hold funds during the call back window instead of holding them in the treasury account.
+- **Circle Contracts** deployed and working. `CueEscrow` on Arc testnet is the on chain version of the call back window: it holds USDC per deposit until an unlock time, reclaimable by the sender before then and withdrawable by the recipient after. It is a demonstrated alternative, not the default path. See [On-chain escrow](#on-chain-escrow-circle-contracts) below for the contract, the address, and the verified transaction hashes.
+
+## On-chain escrow (Circle Contracts)
+
+The default send keeps funds in the treasury and treats a call back as a database row update: simple and safe, but nothing about the call back window is on chain. `CueEscrow` is the honest, on chain version of exactly that guarantee, deployed and working on Arc testnet. **It is a demonstrated alternative. The default path is unchanged, and not every send goes through the contract.**
+
+**The contract** ([`contracts/CueEscrow.sol`](contracts/CueEscrow.sol)) is deliberately tiny and unaudited: three functions, no owner, no admin, no upgrade, no pause.
+
+- `lock(recipientHash, amount, unlockTime)` pulls USDC from the caller and records a deposit.
+- `reclaim(id)` returns it to the depositor, before unlock only.
+- `withdraw(id, preimage, to)` pays it out after unlock, if `keccak256(preimage)` matches the stored `recipientHash`.
+
+It custodies USDC through the ERC-20 interface (`transferFrom` / `transfer`) at Arc's fixed USDC address `0x3600000000000000000000000000000000000000`, keeping the same 6-decimal accounting as the rest of Cue. On Arc, USDC is one balance exposed as both native gas (18 decimals) and ERC-20 (6 decimals); mixing them is the documented footgun, so the contract stays entirely in the ERC-20 view. Note for anyone redeploying: compile with `evmVersion: "paris"`, because Arc testnet rejects the `PUSH0` opcode that newer Solidity emits by default. The one-time deploy goes through Circle's Smart Contract Platform from the treasury wallet; all method calls go through Circle Developer Controlled Wallets (`createContractExecutionTransaction`). Backend glue is in [`src/lib/circle/contracts.ts`](src/lib/circle/contracts.ts) and [`src/lib/cue/escrow.ts`](src/lib/cue/escrow.ts); it is driven from Claude by the `escrow` tool (`send`, `reclaim`, `collect`, `status`).
+
+**The recipient problem.** At send time the recipient has no wallet, since Cue creates one at collection. So the deposit is locked to `keccak256(claimToken)`, and the destination address is supplied only at withdrawal. The token is the same credential the email claim link already carries.
+
+**Known property, stated plainly.** On chain this is a bearer instrument: whoever presents the token preimage can withdraw to any address. That is a real difference from the default path, where a leaked token still has to pass through Cue's backend and its email check. To keep the same guarantee here, **Cue's backend is the only party that ever submits a withdrawal, and it applies the recipient email check first**, so the practical path to funds still passes that check. A fully trustless version would require the recipient to hold a key, which is exactly what this product avoids.
+
+**Migration path.** Routing every send through escrow would mean replacing the treasury-held record in `createSend` with an `escrowLock`, and the database call back and collect with an on-chain `reclaim` and `withdraw`. That is left as a deliberate scope decision: under time pressure, one deployed and verified contract used by a real send proves the capability, whereas a half migrated money path that fails mid-demo proves nothing.
+
+**Verified on Arc testnet.** Contract [`0xa1f92cfd16299062a07e3a1085f65756e98cff08`](https://testnet.arcscan.app/address/0xa1f92cfd16299062a07e3a1085f65756e98cff08). A real lock, a real reclaim before unlock, and a real withdrawal after unlock:
+
+| Step | Transaction |
+| --- | --- |
+| Deploy | [`0x261d24c6…4c11ed`](https://testnet.arcscan.app/tx/0x261d24c63bf2f8cbe1e643e7e83d14a310217bfebae85b57a9b553c37c4c11ed) |
+| Approve (one-time) | [`0xc8eb928f…fd3890`](https://testnet.arcscan.app/tx/0xc8eb928f16262c5031a3e05dad08631fdecafa83429c8eb91276646f74fd3890) |
+| Lock | [`0x196adc7e…7e0b35`](https://testnet.arcscan.app/tx/0x196adc7e2a9dc4b2233ae41e8a258251c69e8b5d14ba5a3ba417e409fe7e0b35) |
+| Reclaim (before unlock) | [`0xb8d5ce16…0d2521`](https://testnet.arcscan.app/tx/0xb8d5ce162edb76b6816f4bee1faf49e7a376894dbad307f906081d5b3a0d2521) |
+| Lock | [`0x0c60365b…a73381`](https://testnet.arcscan.app/tx/0x0c60365b91b54bb70db9d01db7d253426d37f4c75fde84e2e08e29bf3aa73381) |
+| Withdraw (after unlock) | [`0x63162022…a29476`](https://testnet.arcscan.app/tx/0x63162022e332fa38e1dc5a468dfc6bcf76d031d712cca54a5a8a2ca665a29476) |
+
+Reproduce with `node scripts/escrow/compile.mjs`, `node scripts/escrow/deploy.mjs`, then `node scripts/escrow/verify.mjs`.
 
 ## Architecture
 
@@ -46,7 +77,7 @@ Three parts:
 
 - **Backend business logic.** The send, cancel and collect flows, money handling and email, independent of the web layer, in `src/lib/cue/` and `src/lib/email/`. Exposed over API routes in `src/app/api/`.
 - **Website.** Landing, claim, pay and dashboard pages built with the App Router, behind email sign in.
-- **Claude tool.** A remote MCP server hosted in this app at `/api/mcp/<token>`, so a user adds it to Claude by pasting one URL, with nothing to install. It uses the Streamable HTTP transport and calls the backend directly. Nineteen actions work today: add test funds, send, call back, request, split, schedule and manage schedules, save and list contacts, balance, spending summary, set spending limit, track, list, settle and remind on debts, history, collect status and resend. A local stdio version is kept in `packages/mcp` for development.
+- **Claude tool.** A remote MCP server hosted in this app at `/api/mcp/<token>`, so a user adds it to Claude by pasting one URL, with nothing to install. It uses the Streamable HTTP transport and calls the backend directly. Twenty actions work today: add test funds, send, call back, request, split, schedule and manage schedules, save and list contacts, balance, spending summary, set spending limit, track, list, settle and remind on debts, history, collect status and resend, plus `escrow`, the on-chain alternative to the call back window described above. A local stdio version is kept in `packages/mcp` for development.
 
 Stack: Next.js 15, TypeScript, Tailwind v4, Supabase (Postgres), Circle Developer Controlled Wallets, Resend for email, Arc testnet, deployed on Vercel. The MCP server uses the Model Context Protocol Streamable HTTP transport.
 
@@ -84,8 +115,9 @@ src/
     mcp/                  tokens, signed confirmations, tools, JSON-RPC
     api/                  acting account by token, shared secret, rate limit, errors
     supabase/             service role client, plus the cookie bound auth clients
-supabase/migrations/      001_initial_schema ... 005_limits_debts
-scripts/                  connection and end to end test scripts
+supabase/migrations/      001_initial_schema ... 008_escrow_deposits
+contracts/                CueEscrow.sol, the on-chain escrow contract
+scripts/                  connection and end to end test scripts, plus scripts/escrow (compile, deploy, verify)
 packages/mcp/             local stdio MCP server, for development only
 ```
 

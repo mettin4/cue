@@ -14,6 +14,8 @@ import {
 } from "../cue/contacts";
 import { getDashboardData } from "../cue/dashboard";
 import { addTestFunds } from "../cue/fund";
+import { escrowCollect, escrowLock, escrowReclaim, listEscrow } from "../cue/escrow";
+import { escrowEnabled } from "../config";
 import {
   getDebt,
   listDebts,
@@ -215,6 +217,118 @@ export async function sendMoney(
       approve: { tool: "send_money", label: "Approve", token },
     },
   };
+}
+
+const ARCSCAN_TX = (hash: string) => `https://testnet.arcscan.app/tx/${hash}`;
+
+function untilUnlock(unlockAt: string | Date): string {
+  const ms = new Date(unlockAt).getTime() - Date.now();
+  const secs = Math.ceil(ms / 1000);
+  if (secs <= 0) return "now";
+  if (secs < 60) return `in ${secs} seconds`;
+  const mins = Math.round(secs / 60);
+  return `in about ${mins} minute${mins === 1 ? "" : "s"}`;
+}
+
+/**
+ * On-chain escrow: the demonstrated alternative to the default call back window.
+ * One tool, four actions. It locks real USDC into the CueEscrow contract on Arc
+ * testnet, so every action returns a real transaction hash.
+ */
+export async function escrowTool(
+  user: UserRow,
+  args: { action?: "send" | "reclaim" | "collect" | "status"; recipientEmail?: string; amount?: number; reference?: string },
+): Promise<ToolOut> {
+  if (!escrowEnabled()) {
+    return { text: "On-chain escrow is not configured on this deployment.", isError: true };
+  }
+  const action = args.action ?? "status";
+
+  try {
+    if (action === "send") {
+      if (!args.recipientEmail || args.amount == null) {
+        return { text: "To lock money in escrow I need the recipient email and the amount in dollars.", isError: true };
+      }
+      const r = await escrowLock({ senderUserId: user.id, recipientEmail: args.recipientEmail, amountUsdc: args.amount });
+      const when = untilUnlock(r.unlockAt);
+      return {
+        text:
+          `Locked ${dollars(r.amount)} in on-chain escrow for ${r.recipient}. Reference ${r.reference}. ` +
+          `It unlocks ${when}, and you can call it back until then. Lock transaction: ${ARCSCAN_TX(r.lockTx)}`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Locked in escrow",
+          amount: r.amount,
+          body: `For ${r.recipient}. Reference ${r.reference}. Unlocks ${when}. On-chain lock: ${ARCSCAN_TX(r.lockTx)}`,
+        },
+      };
+    }
+
+    if (action === "reclaim") {
+      if (!args.reference) {
+        return { text: "Tell me which escrow send to call back, using its reference from the escrow list.", isError: true };
+      }
+      const r = await escrowReclaim(user.id, args.reference);
+      return {
+        text: `Called back ${dollars(r.amount)} from escrow. It returned to the pool. Reclaim transaction: ${ARCSCAN_TX(r.reclaimTx)}`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Called back",
+          amount: r.amount,
+          body: `Returned from escrow before unlock. On-chain reclaim: ${ARCSCAN_TX(r.reclaimTx)}`,
+        },
+      };
+    }
+
+    if (action === "collect") {
+      if (!args.reference || !args.recipientEmail) {
+        return { text: "To collect an escrow send I need its reference and the recipient email it was addressed to.", isError: true };
+      }
+      const r = await escrowCollect(args.reference, args.recipientEmail);
+      return {
+        text: `Collected ${dollars(r.amount)} from escrow to ${r.recipient}. Withdraw transaction: ${ARCSCAN_TX(r.withdrawTx)}`,
+        structuredContent: {
+          kind: "result",
+          status: "ok",
+          eyebrow: "Collected",
+          amount: r.amount,
+          body: `Withdrawn from escrow to ${r.recipient}'s account. On-chain withdraw: ${ARCSCAN_TX(r.withdrawTx)}`,
+        },
+      };
+    }
+
+    // status
+    const items = await listEscrow(user.id);
+    if (items.length === 0) {
+      return {
+        text: "You have no escrow sends yet. Use the send action to lock one on chain.",
+        structuredContent: { kind: "result", status: "info", title: "No escrow sends", body: "Use the send action to lock one on chain." },
+      };
+    }
+    const lines = items.map((i) => {
+      const tx = i.withdrawTx ?? i.reclaimTx ?? i.lockTx;
+      return `- ${dollars(i.amount)} to ${i.recipient}, ${i.status}. Reference ${i.reference}.${tx ? ` Tx ${ARCSCAN_TX(tx)}` : ""}`;
+    });
+    return {
+      text: `Your escrow sends:\n${lines.join("\n")}`,
+      structuredContent: {
+        kind: "panel",
+        eyebrow: "Escrow sends",
+        list: {
+          items: items.map((i) => ({
+            lead: `$${i.amount}`,
+            leadTone: "mint",
+            sub: `to ${i.recipient} · ${i.status}`,
+          })),
+        },
+        note: "On-chain escrow on Arc testnet. The default send path keeps funds in the sender's account until collection.",
+      },
+    };
+  } catch (error) {
+    return { text: message(error), isError: true };
+  }
 }
 
 export async function addFunds(user: UserRow): Promise<ToolOut> {

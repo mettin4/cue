@@ -5,6 +5,7 @@ import {
   addFunds,
   cancelSend,
   checkClaimStatus,
+  escrowTool,
   getBalance,
   getHistory,
   getSpendingSummaryTool,
@@ -72,6 +73,20 @@ const TOOLS = [
           type: "string",
           description: "Token from the preview. Only set this on the second call, after the user approves.",
         },
+      },
+    },
+  },
+  {
+    name: "escrow",
+    description:
+      "On-chain escrow on Arc testnet, the honest on-chain version of the call back window. This is a demonstrated alternative, not the default send path. Four actions. 'send' with recipientEmail and amount locks USDC in the CueEscrow contract for that recipient, identified only by a claim token hash, and returns a reference and the on-chain lock transaction. 'reclaim' with a reference calls the funds back before the unlock time. 'collect' with a reference and the recipient email withdraws to the recipient after unlock, with the email check applied. 'status' (the default) lists escrow sends with their transaction hashes. Every action returns a real Arc testnet transaction hash.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["send", "reclaim", "collect", "status"], description: "Defaults to status." },
+        recipientEmail: { type: "string", description: "Recipient email. Required for send, and for collect as the email check." },
+        amount: { type: "number", description: "Amount in dollars, for send." },
+        reference: { type: "string", description: "The escrow reference from the list, for reclaim and collect." },
       },
     },
   },
@@ -338,6 +353,8 @@ function toolResult(out: ToolOut) {
 
 async function callTool(user: UserRow, name: string, args: Record<string, unknown>) {
   switch (name) {
+    case "escrow":
+      return escrowTool(user, args as { action?: "send" | "reclaim" | "collect" | "status"; recipientEmail?: string; amount?: number; reference?: string });
     case "add_funds":
       return addFunds(user);
     case "send_money":
