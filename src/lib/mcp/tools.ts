@@ -172,14 +172,24 @@ export async function sendMoney(
     amount,
   });
 
-  // Best effort balance after this send, for the confirmation card. A send draws
-  // from the shared treasury on testnet, so this is the account balance minus the
-  // amount rather than a debit, shown as a plain heads up.
-  let balanceAfter: string | undefined;
+  // The honest constraint on a send is the spending limit, not the account
+  // balance: on testnet the money is covered from a shared pool, so a personal
+  // balance is never debited. Show how much of the limit is left after this send,
+  // and nothing when no limit is set.
+  let limitLeft: string | undefined;
+  let limitScope: string | undefined;
   try {
-    const data = await getDashboardData(user);
-    const after = Math.round(Number(data.balance) * 100) - Math.round(Number(amount) * 100);
-    balanceAfter = (Math.max(0, after) / 100).toFixed(2);
+    const usage = await getUsage(user.id);
+    const active = usage.daily
+      ? { remaining: usage.daily.remaining, scope: "today" }
+      : usage.monthly
+        ? { remaining: usage.monthly.remaining, scope: "this month" }
+        : null;
+    if (active) {
+      const after = Math.round(Number(active.remaining) * 100) - Math.round(Number(amount) * 100);
+      limitLeft = (Math.max(0, after) / 100).toFixed(2);
+      limitScope = active.scope;
+    }
   } catch {
     // Leave it out rather than show a wrong number.
   }
@@ -196,7 +206,8 @@ export async function sendMoney(
       amount,
       recipient: resolved.label,
       unlockLabel,
-      balanceAfter,
+      limitLeft,
+      limitScope,
       confirmationToken: token,
     },
   };

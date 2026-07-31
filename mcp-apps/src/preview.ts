@@ -18,7 +18,8 @@ const sample: Preview = {
   amount: "50.00",
   recipient: "jack@gmail.com",
   unlockLabel: "about an hour",
-  balanceAfter: "142.00",
+  limitLeft: "150.00",
+  limitScope: "today",
   confirmationToken: "sample",
 };
 

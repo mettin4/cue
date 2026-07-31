@@ -216,6 +216,28 @@ export function magicLinkEmail(params: {
   };
 }
 
+/**
+ * Operator alert when the demo pool is running low. Internal, so it is plainer
+ * than the recipient facing mail, but stays in the same visual language.
+ */
+export function treasuryLowEmail(params: {
+  available: string;
+  markUrl?: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Cue demo pool is low: ${params.available} dollars left`,
+    html: layout({
+      markUrl: params.markUrl,
+      heading: "The demo pool is running low",
+      bodyHtml:
+        `About <strong>${params.available} dollars</strong> are left to cover sends. ` +
+        `Top up the pool from the faucet so the demo keeps working. Sends are already ` +
+        `held above the reserve floor, so nothing will overdraw in the meantime.`,
+      footnote: "You are getting this because you are set as the alert address.",
+    }),
+  };
+}
+
 export function debtReminderEmail(params: {
   amount: string;
   fromLabel: string;

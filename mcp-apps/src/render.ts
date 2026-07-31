@@ -9,7 +9,10 @@ export type Preview = {
   amount: string;
   recipient: string;
   unlockLabel: string;
-  balanceAfter?: string;
+  /** How much of the spending limit is left after this send, if a limit is set. */
+  limitLeft?: string;
+  /** "today" or "this month", matching the limit shown. */
+  limitScope?: string;
   confirmationToken: string;
 };
 
@@ -35,14 +38,15 @@ function brand(): string {
 }
 
 function detailRows(p: Preview): string {
-  const balance = p.balanceAfter
-    ? `<div class="row"><dt>Balance after</dt><dd class="num">$${esc(p.balanceAfter)}</dd></div>`
-    : "";
+  const limit =
+    p.limitLeft && p.limitScope
+      ? `<div class="row"><dt>Left ${esc(p.limitScope)}</dt><dd class="num">$${esc(p.limitLeft)}</dd></div>`
+      : "";
   return `
     <dl class="details">
       <div class="row"><dt>To</dt><dd>${esc(p.recipient)}</dd></div>
       <div class="row"><dt>Collectable</dt><dd>in ${esc(p.unlockLabel)}</dd></div>
-      ${balance}
+      ${limit}
     </dl>`;
 }
 

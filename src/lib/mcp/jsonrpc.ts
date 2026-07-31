@@ -64,7 +64,13 @@ const TOOLS = [
         },
       },
     },
-    _meta: { ui: { resourceUri: CONFIRM_SEND_URI } },
+    // Both forms: the nested object the docs show, and the flat wire key the
+    // MCP Apps SDK always emits and the host actually reads. Serving only the
+    // nested form left the card unrendered in Claude.
+    _meta: {
+      ui: { resourceUri: CONFIRM_SEND_URI },
+      "ui/resourceUri": CONFIRM_SEND_URI,
+    },
   },
   {
     name: "cancel_send",

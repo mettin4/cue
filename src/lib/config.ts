@@ -117,6 +117,39 @@ export function maxSendUsdc(): number {
   return Number.isFinite(value) && value > 0 ? value : 5;
 }
 
+/** Reads a positive dollar amount from an env var, or a default. */
+function dollarsEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const value = raw ? Number(raw) : fallback;
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+/**
+ * Treasury protection while the demo is public and signups are free.
+ *
+ * The treasury funds every send, so a fresh account loop could drain it. These
+ * guards make that impossible without any fraud machinery: a floor the balance
+ * can never drop below, a cap on how much the whole demo can send in a day, and
+ * an alert address to warn when it runs low. All three are env tunable.
+ */
+export function treasuryFloorUsdc(): number {
+  return dollarsEnv("CUE_TREASURY_FLOOR_USDC", 5);
+}
+
+export function treasuryDailyCapUsdc(): number {
+  return dollarsEnv("CUE_TREASURY_DAILY_CAP_USDC", 50);
+}
+
+export function treasuryAlertUsdc(): number {
+  return dollarsEnv("CUE_TREASURY_ALERT_USDC", 10);
+}
+
+/** Where low balance alerts go. Alerts are skipped when this is unset. */
+export function treasuryAlertEmail(): string | null {
+  const value = process.env.CUE_ALERT_EMAIL?.trim();
+  return value && value.includes("@") ? value : null;
+}
+
 /**
  * Whether cancel windows shorter than the default are allowed. Off unless the
  * env flag is explicitly "true", so production always enforces the full window.

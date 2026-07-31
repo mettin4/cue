@@ -92,4 +92,5 @@ export type EmailType =
   | "money_request"
   | "schedule_failed"
   | "debt_reminder"
-  | "sign_in";
+  | "sign_in"
+  | "treasury_low";

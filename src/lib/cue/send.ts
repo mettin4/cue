@@ -9,9 +9,13 @@ import {
   appUrl,
   brandMarkUrl,
   maxSendUsdc,
+  treasuryAlertEmail,
+  treasuryAlertUsdc,
+  treasuryDailyCapUsdc,
+  treasuryFloorUsdc,
   treasuryWalletId,
 } from "../config";
-import { claimInviteEmail } from "../email/templates";
+import { claimInviteEmail, treasuryLowEmail } from "../email/templates";
 import { sendAndLog } from "../email/send";
 import { assertWithinLimits } from "./limits";
 import { getSupabaseAdmin } from "../supabase/server";
@@ -104,7 +108,7 @@ export async function createSend(params: {
   // the API, split and scheduled payments.
   await assertWithinLimits(sender.id, amount);
 
-  await assertTreasuryCanCover(amount);
+  const treasury = await assertTreasuryCanCover(amount);
 
   const claimToken = generateClaimToken();
   const cancelDeadline = new Date(Date.now() + cancelWindowSeconds * 1000);
@@ -146,6 +150,9 @@ export async function createSend(params: {
     transactionId: inserted.id,
   });
 
+  // Warn the operator when the demo pool is running low. Never blocks a send.
+  await alertIfLow(treasury.balance, addAmounts(treasury.committed, amount));
+
   return {
     transactionId: inserted.id,
     claimToken,
@@ -157,15 +164,18 @@ export async function createSend(params: {
 }
 
 /**
- * Confirms the treasury can cover this send on top of everything already
- * promised.
+ * Confirms the demo pool can cover this send, and protects it from being drained.
  *
  * Because funds stay put until a claim, every pending_claim row is an unfunded
- * promise against the same treasury balance. Checking the new amount alone
- * would let many sends pass validation and then fail at claim time, so the
- * already committed total is included.
+ * promise against the same treasury balance, so the already committed total is
+ * included. On top of that, two guards keep a free signup loop from emptying the
+ * pool before a demo: a floor the balance can never drop below, and a cap on how
+ * much the whole demo can send in one day. Returns the balance and committed
+ * total so the caller can raise a low balance alert without querying again.
  */
-async function assertTreasuryCanCover(amount: string): Promise<void> {
+async function assertTreasuryCanCover(
+  amount: string,
+): Promise<{ balance: string; committed: string }> {
   const supabase = getSupabaseAdmin();
 
   const { data: pending, error } = await supabase
@@ -185,9 +195,67 @@ async function assertTreasuryCanCover(amount: string): Promise<void> {
   const required = addAmounts(committed, amount);
   const { amount: balance } = await getWalletBalance(treasuryWalletId());
 
-  if (Number(balance) < Number(required)) {
+  // Floor: never let the pool drop below its reserve, even for one send. This is
+  // the guard that makes a full drain impossible.
+  if (Number(balance) - Number(required) < treasuryFloorUsdc()) {
     throw new Error(
-      `There is not enough available to send ${amount} dollars right now. Add money or try a smaller amount.`,
+      "The demo pool is running low, so this send cannot go out right now. Try a smaller amount or come back a little later.",
     );
+  }
+
+  // Daily cap: limit how much the whole demo can send in a day, so a loop cannot
+  // bleed the pool quickly even while it stays above the floor.
+  const dayStart = new Date(
+    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()),
+  ).toISOString();
+  const { data: today } = await supabase
+    .from("transactions")
+    .select("amount_usdc")
+    .in("status", ["pending_claim", "claimed"])
+    .gte("created_at", dayStart);
+  const sentToday = (today ?? []).reduce(
+    (total, row) => addAmounts(total, toAmountString(row.amount_usdc)),
+    "0.00",
+  );
+  if (Number(addAmounts(sentToday, amount)) > treasuryDailyCapUsdc()) {
+    throw new Error(
+      "The demo has reached its sending limit for today. Please try again tomorrow.",
+    );
+  }
+
+  return { balance, committed };
+}
+
+/**
+ * Emails the operator when the pool's available funds fall below the alert level,
+ * so they can top up before it bites. Throttled to one alert every six hours and
+ * skipped when no alert address is set. Never throws: an alert problem must not
+ * affect a send that already went through.
+ */
+async function alertIfLow(balance: string, committedAfter: string): Promise<void> {
+  try {
+    const to = treasuryAlertEmail();
+    if (!to) return;
+
+    const available = Number(balance) - Number(committedAfter);
+    if (available >= treasuryAlertUsdc()) return;
+
+    const supabase = getSupabaseAdmin();
+    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+    const { data: recent } = await supabase
+      .from("email_logs")
+      .select("id")
+      .eq("type", "treasury_low")
+      .gte("sent_at", sixHoursAgo)
+      .limit(1);
+    if (recent && recent.length > 0) return;
+
+    const { subject, html } = treasuryLowEmail({
+      available: Math.max(0, available).toFixed(2),
+      markUrl: brandMarkUrl(),
+    });
+    await sendAndLog({ to, subject, html, type: "treasury_low", transactionId: null });
+  } catch {
+    // Alert failures are swallowed on purpose.
   }
 }
