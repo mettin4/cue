@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Inline MCP Apps UI resources for Cue. Built to a single self-contained HTML file that the remote MCP endpoint serves.",
   "scripts": {
-    "build": "vite build && node scripts/emit.mjs"
+    "build": "node scripts/build-all.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.0",

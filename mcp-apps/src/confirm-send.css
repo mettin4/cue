@@ -33,8 +33,11 @@ body {
   padding: 0;
 }
 
+/* The iframe is transparent so nothing frames the card. The card itself is the
+   whole surface, filling the frame edge to edge, so a host on a light or dark
+   background sees one clean panel, not a dark rectangle around a smaller one. */
 body {
-  background: var(--background);
+  background: transparent;
   color: var(--foreground);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
@@ -44,37 +47,34 @@ body {
 }
 
 #root {
-  display: flex;
-  justify-content: center;
-  padding: 18px;
+  padding: 0;
 }
 
 .card {
   width: 100%;
-  max-width: 420px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px 22px 18px;
-  box-shadow: 0 24px 70px -32px rgba(0, 0, 0, 0.9);
+  /* A soft top down gradient gives depth without a heavy border or shadow. */
+  background: linear-gradient(180deg, #17171b 0%, #101013 100%);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 18px;
+  padding: 26px 24px 22px;
 }
 
 /* Brand, quiet, one per card. */
 .brand {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   color: var(--foreground);
 }
 .brand svg {
-  width: 21px;
-  height: 20px;
+  width: 24px;
+  height: 23px;
   display: block;
 }
 .brand-word {
   font-family: var(--display);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: -0.01em;
 }
 

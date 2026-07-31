@@ -23,6 +23,7 @@ import {
   type ToolOut,
 } from "./tools";
 import { CONFIRM_SEND_HTML } from "./ui/confirm-send.generated";
+import { BALANCE_HTML } from "./ui/balance.generated";
 
 const SERVER_VERSION = "0.1.0";
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -35,10 +36,12 @@ const DEFAULT_PROTOCOL = "2025-06-18";
  * from the tool result, never baked into the HTML.
  */
 const CONFIRM_SEND_URI = "ui://cue/confirm-send.html";
+const BALANCE_URI = "ui://cue/balance.html";
 const UI_MIME = "text/html;profile=mcp-app";
 
 const UI_RESOURCES: Record<string, { name: string; html: string }> = {
   [CONFIRM_SEND_URI]: { name: "Send confirmation", html: CONFIRM_SEND_HTML },
+  [BALANCE_URI]: { name: "Balance", html: BALANCE_HTML },
 };
 
 /**
@@ -189,6 +192,7 @@ const TOOLS = [
     description:
       "Get the current account balance in dollars, plus totals sent and received, how many sends are waiting to be collected, and any daily or monthly spending limit with how much is left.",
     inputSchema: { type: "object", properties: {} },
+    _meta: { ui: { resourceUri: BALANCE_URI }, "ui/resourceUri": BALANCE_URI },
   },
   {
     name: "get_spending_summary",

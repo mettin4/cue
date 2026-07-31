@@ -738,7 +738,24 @@ export async function getBalance(user: UserRow): Promise<ToolOut> {
       text += " No spending limits are set.";
     }
 
-    return { text };
+    return {
+      text,
+      structuredContent: {
+        kind: "balance",
+        balance: data.balance,
+        totalSent: data.stats.totalSent,
+        totalReceived: data.stats.totalReceived,
+        pendingCount: data.stats.pendingCount,
+        daily: usage.daily ? { limit: usage.daily.limit, remaining: usage.daily.remaining } : undefined,
+        monthly: usage.monthly ? { limit: usage.monthly.limit, remaining: usage.monthly.remaining } : undefined,
+        activity: data.activity.slice(0, 5).map((a) => ({
+          amount: a.amount,
+          direction: a.direction,
+          counterparty: a.counterparty,
+          status: a.status,
+        })),
+      },
+    };
   } catch (error) {
     return { text: message(error), isError: true };
   }
