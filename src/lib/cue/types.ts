@@ -91,4 +91,5 @@ export type EmailType =
   | "send_cancelled"
   | "money_request"
   | "schedule_failed"
-  | "debt_reminder";
+  | "debt_reminder"
+  | "sign_in";
