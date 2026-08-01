@@ -24,6 +24,22 @@ import type { EmailResult } from "../email/send";
 import type { TransactionRow, UserRow } from "./types";
 
 /**
+ * Why the treasury refused an outflow. The message is written for a send by
+ * default; other flows (like adding test funds) catch this and word it for their
+ * own situation instead of inheriting send copy.
+ */
+export type TreasuryReason = "floor" | "daily_cap";
+
+export class TreasuryUnavailableError extends Error {
+  reason: TreasuryReason;
+  constructor(reason: TreasuryReason, message: string) {
+    super(message);
+    this.name = "TreasuryUnavailableError";
+    this.reason = reason;
+  }
+}
+
+/**
  * Generates a URL safe claim token. 32 random bytes encoded as base64url gives
  * 43 characters and 256 bits of entropy, so tokens are not guessable.
  */
@@ -198,7 +214,8 @@ export async function assertTreasuryCanCover(
   // Floor: never let the pool drop below its reserve, even for one send. This is
   // the guard that makes a full drain impossible.
   if (Number(balance) - Number(required) < treasuryFloorUsdc()) {
-    throw new Error(
+    throw new TreasuryUnavailableError(
+      "floor",
       "The demo pool is running low, so this send cannot go out right now. Try a smaller amount or come back a little later.",
     );
   }
@@ -218,7 +235,8 @@ export async function assertTreasuryCanCover(
     "0.00",
   );
   if (Number(addAmounts(sentToday, amount)) > treasuryDailyCapUsdc()) {
-    throw new Error(
+    throw new TreasuryUnavailableError(
+      "daily_cap",
       "The demo has reached its sending limit for today. Please try again tomorrow.",
     );
   }

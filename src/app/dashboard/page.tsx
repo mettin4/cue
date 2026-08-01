@@ -11,6 +11,7 @@ import { maskEmail, toAmountString } from "@/lib/cue/money";
 import { formatRunDate, listSchedules, nextRunDate, ordinal } from "@/lib/cue/schedules";
 import { getActiveToken } from "@/lib/mcp/tokens";
 import { getDashboardData } from "@/lib/cue/dashboard";
+import { getFundingAvailability } from "@/lib/cue/fund";
 
 import { AddMoneyButton } from "./add-money-button";
 import { ConnectPanel } from "./connect-card";
@@ -164,6 +165,10 @@ async function FullDashboard({ current }: { current: CurrentUser }) {
   const connectUrl = token ? `${appUrl()}/api/mcp/${token.token}` : null;
   const connected = Boolean(token?.last_used_at);
 
+  // Whether a test funds grant would be accepted right now, so the Add action is
+  // disabled with a reason instead of failing when the pool cannot cover it.
+  const funding = await getFundingAvailability(viewer);
+
   const contacts = await listContacts(viewer.id);
   const contactViews = contacts.map((c) => ({ id: c.id, name: c.name, masked: maskEmail(c.email) }));
 
@@ -197,7 +202,12 @@ async function FullDashboard({ current }: { current: CurrentUser }) {
         stats={data.stats}
         usage={usage}
         hasAccount={data.hasAccount}
-        action={<AddMoneyButton amount={fundAmountUsdc().toFixed(2)} />}
+        action={
+          <AddMoneyButton
+            amount={fundAmountUsdc().toFixed(2)}
+            unavailable={funding.available ? null : funding.message}
+          />
+        }
       />
       <ConnectPanel className="lg:col-span-5" connected={connected} initialUrl={connectUrl} />
       <ActivityPanel className="lg:col-span-7" activity={data.activity} />

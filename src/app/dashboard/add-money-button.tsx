@@ -17,12 +17,16 @@ import {
 } from "@/components/ui/dialog";
 import { addFundsAction } from "./fund-actions";
 
-export function AddMoneyButton({ amount }: { amount: string }) {
+export function AddMoneyButton({ amount, unavailable }: { amount: string; unavailable?: string | null }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // When the demo pool cannot cover a grant, the action is offered but disabled,
+  // with the reason shown, rather than a button that would always fail.
+  const blocked = Boolean(unavailable);
 
   function reset() {
     setBusy(false);
@@ -31,6 +35,7 @@ export function AddMoneyButton({ amount }: { amount: string }) {
   }
 
   async function addFunds() {
+    if (blocked) return;
     setBusy(true);
     setError(null);
     try {
@@ -88,6 +93,10 @@ export function AddMoneyButton({ amount }: { amount: string }) {
           </p>
         ) : null}
 
+        {!done && unavailable ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">{unavailable}</p>
+        ) : null}
+
         {done ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
             Added ${amount} to your balance. It updates here in a moment.
@@ -100,7 +109,7 @@ export function AddMoneyButton({ amount }: { amount: string }) {
               <Button className="font-medium">Done</Button>
             </DialogClose>
           ) : (
-            <Button className="font-medium" onClick={addFunds} disabled={busy}>
+            <Button className="font-medium" onClick={addFunds} disabled={busy || blocked}>
               {busy ? "Adding…" : `Add $${amount}`}
             </Button>
           )}
