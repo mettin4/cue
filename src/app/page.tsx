@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { CheckCircle2, MailOpen, PenLine, Wallet } from "lucide-react";
+import { CheckCircle2, CircleDollarSign, MailOpen, PenLine } from "lucide-react";
 
 import { SiteFooter } from "@/components/site/footer";
 
@@ -9,7 +9,7 @@ const STEPS = [
   { icon: PenLine, label: "Type" },
   { icon: CheckCircle2, label: "Approve" },
   { icon: MailOpen, label: "Email lands" },
-  { icon: Wallet, label: "Collect" },
+  { icon: CircleDollarSign, label: "Collect" },
 ];
 
 /**
@@ -69,12 +69,12 @@ function RecipientSection() {
           The other side
         </p>
         <h2 className="mt-5 font-display text-[2rem] leading-[1.06] font-semibold tracking-tightest sm:text-[clamp(2.25rem,4vw,3.5rem)]">
-          Jack has never opened a crypto app. He does not need to.
+          Jack has never opened an app like this. He does not need to.
         </h2>
         <ul className="mt-8 space-y-2.5">
-          <li className="text-sm text-subtle-foreground">No wallet.</li>
+          <li className="text-sm text-subtle-foreground">No account to open.</li>
           <li className="text-sm text-subtle-foreground">No app to install.</li>
-          <li className="text-sm text-subtle-foreground">No seed phrase.</li>
+          <li className="text-sm text-subtle-foreground">Nothing to set up.</li>
         </ul>
       </div>
 
@@ -115,7 +115,7 @@ export default function Home() {
 
       {/* One container, one grid. Every section aligns to the same left edge.
           Section rhythm: 96px on mobile, 160px on desktop. */}
-      <div className="relative z-10 mx-auto w-full max-w-[1280px] px-6 pt-16 pb-24 md:px-16 md:pt-24 md:pb-40">
+      <div className="relative z-10 mx-auto w-full max-w-[1152px] px-6 pt-16 pb-24 md:px-12 md:pt-24 md:pb-40">
         <TypedHero />
 
         <div className="mt-24 md:mt-40">

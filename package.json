@@ -37,6 +37,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.19",
     "pg": "^8.22.0",
+    "puppeteer-core": "^23.11.1",
     "solc": "^0.8.26",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",

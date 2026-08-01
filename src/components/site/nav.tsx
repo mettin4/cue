@@ -7,7 +7,7 @@ export function SiteNav() {
     <header className="sticky top-0 z-40 border-b border-border/50 bg-background/70 backdrop-blur-md">
       <nav
         aria-label="Main"
-        className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-6 md:px-16"
+        className="mx-auto flex h-16 w-full max-w-[1152px] items-center justify-between px-6 md:px-12"
       >
         <Link
           href="/"
@@ -18,22 +18,12 @@ export function SiteNav() {
           Cue
         </Link>
 
-        <div className="flex items-center gap-5">
-          <a
-            href="https://github.com/mettin4/cue"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ring-focus rounded-md text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
-          >
-            View Source
-          </a>
-          <Link
-            href="/dashboard"
-            className="ring-focus rounded-md text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
-          >
-            Dashboard
-          </Link>
-        </div>
+        <Link
+          href="/dashboard"
+          className="ring-focus rounded-md text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
+        >
+          Dashboard
+        </Link>
       </nav>
     </header>
   );

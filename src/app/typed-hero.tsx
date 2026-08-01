@@ -39,8 +39,8 @@ export function TypedHero() {
 
   return (
     <section className="grid grid-cols-12 gap-x-6">
-      {/* Caption + sentence span columns 1 to 11. */}
-      <div className="col-span-12 lg:col-span-11">
+      {/* Caption + sentence span the full grid, so the block is symmetric. */}
+      <div className="col-span-12">
         <p className="text-[11px] font-medium tracking-[0.32em] text-muted-foreground uppercase">
           Write to Claude, money moves.
         </p>
@@ -80,7 +80,7 @@ export function TypedHero() {
           </div>
 
           {/* The confirmation, expressed typographically, no box, no dots. */}
-          <div className="col-span-12 lg:col-span-5 lg:col-start-7">
+          <div className="col-span-12 lg:col-span-6 lg:col-start-7">
             <p className="tabular font-display text-[2.75rem] leading-none font-semibold tracking-tightest text-primary">
               $50.00
             </p>
