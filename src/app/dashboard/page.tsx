@@ -73,6 +73,11 @@ function Footer() {
         Money stays in the sender&apos;s account until it is collected, and the sender can call any send
         back during the first hour.
       </p>
+      <p>Money you receive can be sent on to anyone by email right away, with nothing to verify.</p>
+      <p>
+        Moving it to a bank arrives on the real network, through a regulated partner and the same one time
+        identity check any money app asks for.
+      </p>
       <p>Built by Team MTH.</p>
     </div>
   );

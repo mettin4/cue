@@ -33,6 +33,16 @@ The words crypto, wallet and USDC never appear anywhere the user can see. To a s
 4. **Collect.** On a valid claim we find or create the recipient user, create a Circle wallet for them on Arc testnet if they do not have one, move the row to `claimed` with a conditional update so a claim and a cancel cannot both win, and only then transfer USDC from the treasury wallet to the recipient.
 5. **Settlement handling.** The transfer is polled to a terminal state. A terminal failure releases the row back to `pending_claim` so it can be tried again, since no money moved. A timeout leaves the row `claimed` and reports that it is still settling, so a transfer is never sent twice.
 
+## What a recipient can do with the money
+
+Two tiers, stated plainly so nothing here is overstated.
+
+**Today, on testnet.** Value stays liquid inside Cue. A recipient who has collected money can send it straight on to anyone else by email, with no verification and nothing to install. That path is real on Arc testnet now. There is no live cash out to a bank on testnet, and we do not stage one.
+
+**On mainnet.** Cashing out to a bank account or a card requires a one time identity check, the same as any money app (Venmo, PayPal, Cash App all ask for it). That step runs through a regulated payout partner, not through us: Cue never becomes the bank and never holds a money transmitter licence. The intended primary path is [Bridge](https://bridge.xyz) (a Stripe company), which converts a stablecoin balance to fiat and pays out over ACH, wire, SEPA and other rails while handling identity and compliance behind its API, so the recipient sees dollars rather than anything technical. A faster to integrate alternative is an embedded off ramp such as MoonPay, Transak or Ramp, a hosted flow the recipient completes themselves. Fees and timings are typical of these rails rather than guaranteed: roughly one to three business days to a bank, and for the embedded off ramps a sell spread in the region of three to five percent plus a network fee. Exact numbers are set per partner and per country and should be confirmed with the partner.
+
+This is documentation of the intended design. None of the mainnet cash out is built, and the demo does not simulate a bank payout.
+
 ## Circle and Arc usage
 
 - **Circle Developer Controlled Wallets** for wallet sets, recipient wallet creation, balance reads and USDC transfers. Client setup in [`src/lib/circle/client.ts`](src/lib/circle/client.ts), all wallet and transfer operations in [`src/lib/circle/wallets.ts`](src/lib/circle/wallets.ts).
