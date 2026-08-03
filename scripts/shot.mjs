@@ -14,7 +14,7 @@ const browser = await puppeteer.launch({
   args: ["--no-sandbox"],
 });
 const page = await browser.newPage();
-await page.setViewport({ width: Number(w), height: Number(h), deviceScaleFactor: 1 });
+await page.setViewport({ width: Number(w), height: Number(h), deviceScaleFactor: 2 });
 
 if (cookieFile && cookieFile !== "-") {
   const raw = readFileSync(cookieFile, "utf8").trim();
